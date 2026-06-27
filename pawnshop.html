@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Downtown Pawnshop — POS</title>
+<style>
+:root {
+  --bg:#0a0b0a; --bg2:#0f110f; --bg3:#141614; --bg4:#1a1d1a;
+  --border:#1e261e; --border2:#2a362a;
+  --gold:#c8a84b; --gold2:#a88a3b;
+  --green:#4ade80; --green2:#166534; --green3:#052e16;
+  --red:#f87171; --red2:#7f1d1d; --red3:#1a0000;
+  --amber:#f59e0b; --amber2:#78350f; --amber3:#1c1500;
+  --blue:#818cf8; --blue2:#1e1b4b;
+  --text:#d4c9a8; --text2:#8a9a8a; --text3:#4a5a4a; --text4:#2a3a2a;
+  --radius:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:13px;min-height:100vh;overflow-x:hidden;}
+input,select,textarea,button{font-family:inherit;font-size:13px;}
+button{cursor:pointer;}
+
+/* ── LOCK SCREEN ── */
+#lockScreen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+.lock-logo{font-size:28px;font-weight:700;color:var(--gold);letter-spacing:3px;text-align:center;}
+.lock-sub{font-size:10px;color:var(--text3);letter-spacing:2px;margin:4px 0 8px;text-align:center;}
+.lock-shopname{font-size:12px;color:var(--text2);letter-spacing:1px;margin-bottom:32px;text-align:center;}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:28px;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all 0.15s;}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:230px;}
+.pin-btn{height:62px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:22px;font-weight:700;transition:all 0.1s;}
+.pin-btn:active{background:var(--bg4);border-color:var(--gold);}
+.pin-btn.zero{grid-column:2;}
+.pin-btn.del{font-size:16px;color:var(--text3);}
+.pin-error{color:var(--red);font-size:11px;letter-spacing:1px;margin-top:14px;min-height:18px;text-align:center;}
+.pin-meta{color:var(--text3);font-size:10px;margin-top:6px;text-align:center;}
+.lock-employee{margin-top:20px;font-size:10px;color:var(--text3);text-align:center;}
+
+/* ── SETUP ── */
+#setupScreen{position:fixed;inset:0;background:var(--bg);z-index:998;display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:40px 20px 80px;}
+.setup-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:100%;max-width:380px;margin-bottom:16px;}
+.setup-title{font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:14px;}
+.setup-field{margin-bottom:12px;}
+.setup-label{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;}
+.setup-input{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:10px;border-radius:var(--radius);outline:none;}
+.setup-btn{width:100%;padding:13px;background:var(--amber3);border:1px solid var(--gold);color:var(--gold);font-size:11px;letter-spacing:3px;border-radius:var(--radius);margin-top:6px;}
+.setup-hint{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.7;}
+.setup-error{font-size:11px;color:var(--red);margin-top:6px;min-height:16px;}
+.progress-bar{display:flex;gap:6px;justify-content:center;margin:20px 0;}
+.prog-step{height:3px;width:40px;background:var(--border2);border-radius:2px;transition:all 0.3s;}
+.prog-step.active{background:var(--gold);}
+.prog-step.done{background:var(--green);}
+
+/* ── HEADER ── */
+#appHeader{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 14px;position:sticky;top:0;z-index:100;}
+.header-row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.shop-name{font-size:14px;font-weight:700;color:var(--gold);letter-spacing:2px;}
+.header-meta{font-size:9px;color:var(--text3);letter-spacing:1px;}
+.header-actions{display:flex;gap:6px;}
+.hbtn{background:transparent;border:1px solid var(--border);color:var(--text3);padding:4px 8px;font-size:9px;letter-spacing:1px;border-radius:var(--radius);}
+.hbtn.active{border-color:var(--amber);color:var(--amber);}
+.header-row2{display:flex;align-items:center;gap:10px;}
+.spot-mini{font-size:11px;color:var(--text3);}
+.spot-val{color:var(--gold);font-weight:700;}
+.employee-badge{font-size:9px;color:var(--text3);padding:2px 8px;border:1px solid var(--border);border-radius:10px;}
+
+/* ── TABS ── */
+#tabBar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;position:sticky;top:60px;z-index:99;-webkit-overflow-scrolling:touch;}
+.tab{flex:0 0 auto;padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);font-size:10px;letter-spacing:1px;white-space:nowrap;transition:all 0.15s;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* ── PANELS ── */
+.panel{display:none;padding:12px;padding-bottom:80px;}
+.panel.active{display:block;}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;}
+.card-title{font-size:9px;color:var(--text3);letter-spacing:2px;margin-bottom:10px;}
+.card.gold{border-color:var(--gold2);}
+.card.green{border-color:var(--green2);}
+.card.red{border-color:var(--red2);}
+.card.amber{border-color:var(--amber2);}
+
+/* ── FORM ── */
+.field{margin-bottom:11px;}
+.field-label{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;}
+.field-input{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px 10px;border-radius:var(--radius);outline:none;}
+.field-input:focus{border-color:var(--gold2);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+
+/* ── BUTTONS ── */
+.btn{padding:10px 16px;border-radius:var(--radius);font-size:11px;letter-spacing:1px;border:1px solid;cursor:pointer;}
+.btn-primary{background:var(--amber3);border-color:var(--gold);color:var(--gold);width:100%;padding:13px;font-size:12px;letter-spacing:3px;}
+.btn-green{background:var(--green3);border-color:var(--green2);color:var(--green);}
+.btn-red{background:var(--red3);border-color:var(--red2);color:var(--red);}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2);}
+.btn-full{width:100%;padding:11px;}
+.btn-sm{padding:5px 10px;font-size:10px;}
+
+/* ── STATUS BADGES ── */
+.badge{display:inline-block;font-size:9px;padding:2px 7px;border-radius:2px;border:1px solid;letter-spacing:1px;text-transform:uppercase;}
+.badge-hold{color:var(--red);border-color:var(--red2);background:var(--red3);}
+.badge-soon{color:var(--amber);border-color:var(--amber2);background:var(--amber3);}
+.badge-clear{color:var(--green);border-color:var(--green2);background:var(--green3);}
+.badge-sold{color:var(--blue);border-color:#312e81;background:var(--blue2);}
+.badge-loan{color:#c084fc;border-color:#581c87;background:#1a0a2e;}
+.badge-layaway{color:#67e8f9;border-color:#164e63;background:#0a1a20;}
+.badge-admin{color:var(--gold);border-color:var(--gold2);background:#1a1200;}
+.badge-staff{color:var(--text2);border-color:var(--border2);background:var(--bg3);}
+
+/* ── TICKET CARDS ── */
+.ticket-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;}
+.ticket-num{font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px;}
+.ticket-meta{font-size:10px;color:var(--text3);margin-bottom:8px;}
+.ticket-type-B{border-left:3px solid var(--green);}
+.ticket-type-S{border-left:3px solid var(--blue);}
+.ticket-type-L{border-left:3px solid #c084fc;}
+.ticket-type-LY{border-left:3px solid #67e8f9;}
+
+/* ── CUSTOMER CARD ── */
+.customer-row{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border);cursor:pointer;}
+.customer-avatar{width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.customer-name{font-size:13px;font-weight:700;color:var(--text);}
+.customer-meta{font-size:10px;color:var(--text3);}
+.customer-flag{font-size:9px;color:var(--red);margin-top:2px;}
+
+/* ── INVENTORY ── */
+.inv-row{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.inv-name{font-size:13px;font-weight:700;}
+.inv-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.inv-right{text-align:right;flex-shrink:0;}
+.hold-countdown{font-size:11px;font-weight:700;}
+
+/* ── DASHBOARD ── */
+.dash-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;}
+.dash-stat-label{font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;}
+.dash-stat-val{font-size:20px;font-weight:700;}
+.alert-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ── KPI ── */
+.emp-kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;}
+.emp-name-big{font-size:14px;font-weight:700;margin-bottom:8px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.kpi-cell{background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:7px;text-align:center;}
+.kpi-label{font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:3px;}
+.kpi-val{font-size:13px;font-weight:700;}
+
+/* ── COMPLIANCE ── */
+.agency-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.report-btn{padding:4px 10px;background:var(--green3);border:1px solid var(--green2);color:var(--green);font-family:inherit;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:2px;}
+
+/* ── MARKET (mini) ── */
+.metal-tile{background:var(--bg3);border:1px solid var(--border2);border-radius:2px;padding:10px;text-align:center;}
+.metal-sym{font-size:14px;font-weight:700;letter-spacing:2px;}
+.metal-price{font-size:16px;font-weight:700;margin:4px 0;}
+.metal-sub{font-size:9px;color:var(--text3);}
+
+/* ── EVALUATE ── */
+.eval-photo-box{height:130px;border:1px dashed var(--border2);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:4px;cursor:pointer;}
+.eval-photo-box img{width:100%;height:100%;object-fit:contain;border-radius:var(--radius);}
+
+/* ── MODALS ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;overflow-y:auto;}
+.modal-overlay.open{display:block;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);max-width:640px;margin:20px auto;padding:0;overflow:hidden;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.modal-title{font-size:11px;color:var(--gold);letter-spacing:2px;}
+.modal-close{background:transparent;border:none;color:var(--text3);font-size:20px;}
+.modal-body{padding:16px;}
+
+/* ── SETTINGS ── */
+#settingsPanel{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;}
+.settings-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;}
+
+/* ── DIVIDER ── */
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0;}
+
+/* ── MISC ── */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:12px;}
+.text-green{color:var(--green);}
+.text-red{color:var(--red);}
+.text-gold{color:var(--gold);}
+.text-amber{color:var(--amber);}
+.text-blue{color:var(--blue);}
+.text-muted{color:var(--text3);}
+.fc{font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOCK SCREEN ══════════════ -->
+<div id="lockScreen">
+  <div class="lock-logo">🏪</div>
+  <div class="lock-logo" id="lockShopName">DOWNTOWN PAWNSHOP</div>
+  <div class="lock-sub">PRECIOUS METALS & COIN POS</div>
+  <div class="lock-shopname" id="lockEmployee">Enter PIN to continue</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="ld0"></div>
+    <div class="pin-dot" id="ld1"></div>
+    <div class="pin-dot" id="ld2"></div>
+    <div class="pin-dot" id="ld3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="lockPress(1)">1</button>
+    <button class="pin-btn" onclick="lockPress(2)">2</button>
+    <button class="pin-btn" onclick="lockPress(3)">3</button>
+    <button class="pin-btn" onclick="lockPress(4)">4</button>
+    <button class="pin-btn" onclick="lockPress(5)">5</button>
+    <button class="pin-btn" onclick="lockPress(6)">6</button>
+    <button class="pin-btn" onclick="lockPress(7)">7</button>
+    <button class="pin-btn" onclick="lockPress(8)">8</button>
+    <button class="pin-btn" onclick="lockPress(9)">9</button>
+    <button class="pin-btn zero" onclick="lockPress(0)">0</button>
+    <button class="pin-btn del" onclick="lockDel()">⌫</button>
+  </div>
+  <div class="pin-error" id="lockError"></div>
+  <div class="pin-meta" id="lockMeta"></div>
+</div>
+
+<!-- ══════════════ SETUP SCREEN ══════════════ -->
+<div id="setupScreen">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:24px;font-weight:700;color:var(--gold);letter-spacing:3px">🏪 SETUP</div>
+    <div style="font-size:10px;color:var(--text3);letter-spacing:2px;margin-top:4px">PAWNSHOP POS SYSTEM</div>
+  </div>
+  <div class="progress-bar">
+    <div class="prog-step active" id="ps0"></div>
+    <div class="prog-step" id="ps1"></div>
+    <div class="prog-step" id="ps2"></div>
+  </div>
+
+  <!-- Step 1: Shop Info -->
+  <div id="ss1" style="width:100%;max-width:380px">
+    <div class="setup-card">
+      <div class="setup-title">STEP 1 — SHOP INFORMATION</div>
+      <div class="setup-field"><div class="setup-label">SHOP NAME</div><input class="setup-input" id="ssShopName" value="Downtown Pawnshop" placeholder="Your Shop Name"></div>
+      <div class="setup-field"><div class="setup-label">ADDRESS</div><input class="setup-input" id="ssAddress" placeholder="123 Main St"></div>
+      <div class="grid2" style="gap:10px;margin-bottom:11px">
+        <div><div class="setup-label">CITY</div><input class="setup-input" id="ssCity" placeholder="City"></div>
+        <div><div class="setup-label">STATE</div><input class="setup-input" id="ssState" placeholder="MI" maxlength="2"></div>
+      </div>
+      <div class="grid2" style="gap:10px;margin-bottom:11px">
+        <div><div class="setup-label">ZIP</div><input class="setup-input" id="ssZip" placeholder="48000"></div>
+        <div><div class="setup-label">PHONE</div><input class="setup-input" id="ssPhone" placeholder="(555) 000-0000"></div>
+      </div>
+      <div class="setup-field"><div class="setup-label">PAWN LICENSE # (optional)</div><input class="setup-input" id="ssLicense" placeholder="License number"></div>
+      <div class="setup-field">
+        <div class="setup-label">HOLD PERIOD (days) — <span style="color:var(--text2)">default 10 for MI</span></div>
+        <input class="setup-input" id="ssHoldDays" type="number" value="10" min="1" max="90">
+      </div>
+      <div class="setup-field"><div class="setup-label">ANTHROPIC API KEY</div>
+        <input class="setup-input" id="ssApiKey" type="password" placeholder="sk-ant-api03-...">
+        <div class="setup-hint">Get your free key at <span style="color:var(--gold)">console.anthropic.com</span><br>Used for coin scanning & live market data.</div>
+      </div>
+      <button class="setup-btn" onclick="setupStep1Next()">NEXT →</button>
+      <div class="setup-error" id="ss1Error"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Admin PIN -->
+  <div id="ss2" style="display:none;width:100%;max-width:380px">
+    <div class="setup-card">
+      <div class="setup-title">STEP 2 — MASTER ADMIN PIN</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.7">This PIN unlocks admin access. Keep it private. Default is 0000 — change it now.</div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-align:center;margin-bottom:8px" id="ss2Label">ENTER ADMIN PIN</div>
+      <div class="pin-dots" style="margin-bottom:16px">
+        <div class="pin-dot" id="sd0"></div><div class="pin-dot" id="sd1"></div>
+        <div class="pin-dot" id="sd2"></div><div class="pin-dot" id="sd3"></div>
+      </div>
+      <div class="pin-pad" style="margin:0 auto 12px">
+        <button class="pin-btn" onclick="setupPinPress(1)">1</button><button class="pin-btn" onclick="setupPinPress(2)">2</button><button class="pin-btn" onclick="setupPinPress(3)">3</button>
+        <button class="pin-btn" onclick="setupPinPress(4)">4</button><button class="pin-btn" onclick="setupPinPress(5)">5</button><button class="pin-btn" onclick="setupPinPress(6)">6</button>
+        <button class="pin-btn" onclick="setupPinPress(7)">7</button><button class="pin-btn" onclick="setupPinPress(8)">8</button><button class="pin-btn" onclick="setupPinPress(9)">9</button>
+        <button class="pin-btn zero" onclick="setupPinPress(0)">0</button><button class="pin-btn del" onclick="setupPinDel()">⌫</button>
+      </div>
+      <div class="setup-error" id="ss2Error"></div>
+    </div>
+  </div>
+
+  <!-- Step 3: First employee -->
+  <div id="ss3" style="display:none;width:100%;max-width:380px">
+    <div class="setup-card">
+      <div class="setup-title">STEP 3 — ADD YOUR FIRST EMPLOYEE (optional)</div>
+      <div class="setup-field"><div class="setup-label">EMPLOYEE NAME</div><input class="setup-input" id="ssEmpName" placeholder="First Last"></div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-align:center;margin-bottom:8px">EMPLOYEE PIN</div>
+      <div class="pin-dots" style="margin-bottom:16px">
+        <div class="pin-dot" id="se0"></div><div class="pin-dot" id="se1"></div>
+        <div class="pin-dot" id="se2"></div><div class="pin-dot" id="se3"></div>
+      </div>
+      <div class="pin-pad" style="margin:0 auto 12px">
+        <button class="pin-btn" onclick="setupEmpPinPress(1)">1</button><button class="pin-btn" onclick="setupEmpPinPress(2)">2</button><button class="pin-btn" onclick="setupEmpPinPress(3)">3</button>
+        <button class="pin-btn" onclick="setupEmpPinPress(4)">4</button><button class="pin-btn" onclick="setupEmpPinPress(5)">5</button><button class="pin-btn" onclick="setupEmpPinPress(6)">6</button>
+        <button class="pin-btn" onclick="setupEmpPinPress(7)">7</button><button class="pin-btn" onclick="setupEmpPinPress(8)">8</button><button class="pin-btn" onclick="setupEmpPinPress(9)">9</button>
+        <button class="pin-btn zero" onclick="setupEmpPinPress(0)">0</button><button class="pin-btn del" onclick="setupEmpPinDel()">⌫</button>
+      </div>
+      <div class="setup-error" id="ss3Error"></div>
+      <button class="setup-btn" onclick="setupFinish()">LAUNCH →</button>
+      <button onclick="setupFinish(true)" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:inherit;font-size:10px;letter-spacing:1px;margin-top:8px;cursor:pointer;border-radius:var(--radius)">SKIP — ADD EMPLOYEES LATER</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SETTINGS ══════════════ -->
+<div id="settingsPanel">
+  <div class="settings-hdr">
+    <span style="font-size:12px;color:var(--gold);letter-spacing:2px">⚙ SETTINGS</span>
+    <button onclick="closeSettings()" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+  </div>
+  <div style="padding:14px">
+    <div class="card">
+      <div class="card-title">SHOP INFORMATION</div>
+      <div class="field"><div class="field-label">SHOP NAME</div><input class="field-input" id="stShopName"></div>
+      <div class="field"><div class="field-label">ADDRESS</div><input class="field-input" id="stAddress"></div>
+      <div class="grid2"><div class="field"><div class="field-label">CITY</div><input class="field-input" id="stCity"></div><div class="field"><div class="field-label">STATE</div><input class="field-input" id="stState" maxlength="2"></div></div>
+      <div class="grid2"><div class="field"><div class="field-label">ZIP</div><input class="field-input" id="stZip"></div><div class="field"><div class="field-label">PHONE</div><input class="field-input" id="stPhone"></div></div>
+      <div class="field"><div class="field-label">LICENSE #</div><input class="field-input" id="stLicense"></div>
+      <div class="field"><div class="field-label">HOLD PERIOD (days)</div><input class="field-input" type="number" id="stHoldDays" min="1" max="90"></div>
+      <button class="btn btn-green btn-full" onclick="saveShopSettings()">SAVE SHOP INFO</button>
+    </div>
+    <div class="card">
+      <div class="card-title">API KEY</div>
+      <input type="password" class="field-input" id="stApiKey" style="margin-bottom:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('stApiKey').type=document.getElementById('stApiKey').type==='password'?'text':'password'" style="flex:1">👁 SHOW</button>
+        <button class="btn btn-green" onclick="saveApiKeySetting()" style="flex:1">SAVE</button>
+      </div>
+      <div id="stApiMsg" style="font-size:11px;margin-top:6px;min-height:16px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">ADMIN PIN</div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px" id="stPinStep">CURRENT ADMIN PIN</div>
+      <div class="pin-dots" style="margin-bottom:14px">
+        <div class="pin-dot" id="stpd0"></div><div class="pin-dot" id="stpd1"></div><div class="pin-dot" id="stpd2"></div><div class="pin-dot" id="stpd3"></div>
+      </div>
+      <div class="pin-pad" style="margin:0 auto 10px">
+        <button class="pin-btn" onclick="stPinPress(1)">1</button><button class="pin-btn" onclick="stPinPress(2)">2</button><button class="pin-btn" onclick="stPinPress(3)">3</button>
+        <button class="pin-btn" onclick="stPinPress(4)">4</button><button class="pin-btn" onclick="stPinPress(5)">5</button><button class="pin-btn" onclick="stPinPress(6)">6</button>
+        <button class="pin-btn" onclick="stPinPress(7)">7</button><button class="pin-btn" onclick="stPinPress(8)">8</button><button class="pin-btn" onclick="stPinPress(9)">9</button>
+        <button class="pin-btn zero" onclick="stPinPress(0)">0</button><button class="pin-btn del" onclick="stPinDel()">⌫</button>
+      </div>
+      <div id="stPinError" style="font-size:11px;color:var(--red);min-height:16px;text-align:center"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">DATA</div>
+      <button class="btn btn-ghost btn-full" style="margin-bottom:8px" onclick="exportAllData()">📤 EXPORT ALL DATA (JSON)</button>
+      <button class="btn btn-red btn-full" onclick="confirmFactoryReset()">⚠ FACTORY RESET</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MAIN APP ══════════════ -->
+<div id="mainApp" style="display:none">
+
+  <!-- HEADER -->
+  <div id="appHeader">
+    <div class="header-row1">
+      <div>
+        <div class="shop-name" id="headerShopName">DOWNTOWN PAWNSHOP</div>
+        <div class="header-meta" id="headerDate"></div>
+      </div>
+      <div class="header-actions">
+        <span class="employee-badge" id="headerEmployee">—</span>
+        <button class="hbtn" onclick="toggleCustomerMode()" id="custModeBtn">👤 CUSTOMER</button>
+        <button class="hbtn" id="adminBtn" onclick="openSettings()" style="display:none">⚙ ADMIN</button>
+        <button class="hbtn" onclick="lockApp()">🔒</button>
+      </div>
+    </div>
+    <div class="header-row2">
+      <span class="spot-mini">AG <span class="spot-val" id="hSpot">$—</span></span>
+      <span class="spot-mini">AU <span style="color:var(--gold)" id="hGold">$—</span></span>
+      <span class="spot-mini">PT <span style="color:#a0b0c0" id="hPt">$—</span></span>
+      <button onclick="fetchSpotPrices()" style="background:transparent;border:none;color:var(--text3);font-size:10px;cursor:pointer;margin-left:4px">↻</button>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div id="tabBar">
+    <button class="tab active" onclick="showTab('dash')">🏠 DASH</button>
+    <button class="tab" onclick="showTab('tickets')">📋 TICKETS</button>
+    <button class="tab" onclick="showTab('customers')">👤 CUSTOMERS</button>
+    <button class="tab" onclick="showTab('inventory')">📦 INVENTORY</button>
+    <button class="tab" onclick="showTab('evaluate')">🔬 EVALUATE</button>
+    <button class="tab" onclick="showTab('market')">📈 MARKET</button>
+    <button class="tab admin-only" onclick="showTab('employees')" style="display:none">👥 EMPLOYEES</button>
+    <button class="tab admin-only" onclick="showTab('compliance')" style="display:none">🚔 COMPLIANCE</button>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="panel active" id="panel-dash">
+    <div class="grid4" style="margin-bottom:12px">
+      <div class="dash-stat"><div class="dash-stat-label">TODAY BOUGHT</div><div class="dash-stat-val text-green" id="dTodayBought">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">TODAY SOLD</div><div class="dash-stat-val text-blue" id="dTodaySold">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">IN HOLD</div><div class="dash-stat-val text-amber" id="dInHold">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">CLEAR TODAY</div><div class="dash-stat-val text-red" id="dClearToday">0</div></div>
+    </div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="dash-stat"><div class="dash-stat-label">TODAY REVENUE</div><div class="dash-stat-val text-gold" id="dRevenue">$0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">INVENTORY VALUE</div><div class="dash-stat-val" id="dInvValue">$0</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠ HOLD ALERTS</div>
+      <div id="holdAlertList"><div class="empty-state" style="padding:16px">No items coming off hold today.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">RECENT ACTIVITY</div>
+      <div id="recentActivity"><div class="empty-state" style="padding:16px">No activity yet.</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <button class="btn btn-green btn-full" onclick="openNewTicket('B')">+ BUY TICKET</button>
+      <button class="btn btn-ghost btn-full" onclick="openNewTicket('S')">+ SELL TICKET</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost btn-full" style="color:#c084fc;border-color:#581c87" onclick="openNewTicket('L')">+ LOAN TICKET</button>
+      <button class="btn btn-ghost btn-full" style="color:#67e8f9;border-color:#164e63" onclick="openNewTicket('LY')">+ LAYAWAY</button>
+    </div>
+  </div>
+
+  <!-- ── TICKETS ── -->
+  <div class="panel" id="panel-tickets">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="openNewTicket('B')">+ BUY</button>
+      <button class="btn btn-ghost" onclick="openNewTicket('S')">+ SELL</button>
+      <button class="btn btn-ghost" style="color:#c084fc;border-color:#581c87" onclick="openNewTicket('L')">+ LOAN</button>
+      <button class="btn btn-ghost" style="color:#67e8f9;border-color:#164e63" onclick="openNewTicket('LY')">+ LAYAWAY</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto">
+      <button class="btn btn-sm btn-ghost active" onclick="filterTickets('all',this)" id="tf-all">ALL</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterTickets('B',this)">BUY</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterTickets('S',this)">SELL</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterTickets('L',this)">LOAN</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterTickets('LY',this)">LAYAWAY</button>
+    </div>
+    <div id="ticketList"><div class="empty-state">No tickets yet.</div></div>
+  </div>
+
+  <!-- ── CUSTOMERS ── -->
+  <div class="panel" id="panel-customers">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="field-input" type="text" id="custSearch" placeholder="Search name, phone, ID..." oninput="searchCustomers()" style="flex:1">
+      <button class="btn btn-green" onclick="openNewCustomer()">+ ADD</button>
+    </div>
+    <div id="customerList"><div class="empty-state">No customers yet.</div></div>
+  </div>
+
+  <!-- ── INVENTORY ── -->
+  <div class="panel" id="panel-inventory">
+    <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto">
+      <button class="btn btn-sm btn-ghost" onclick="filterInv('all',this)">ALL</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterInv('hold',this)">ON HOLD</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterInv('clear',this)">CLEAR TO SELL</button>
+      <button class="btn btn-sm btn-ghost" onclick="filterInv('sold',this)">SOLD</button>
+    </div>
+    <div id="inventoryList"><div class="empty-state">No inventory yet.</div></div>
+  </div>
+
+  <!-- ── EVALUATE ── -->
+  <div class="panel" id="panel-evaluate">
+    <div class="card">
+      <div class="card-title">🔬 COIN EVALUATOR</div>
+      <div class="grid2" style="gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:9px;color:var(--gold);letter-spacing:1px;text-align:center;margin-bottom:6px">OBVERSE</div>
+          <div class="eval-photo-box" id="evalObvBox" onclick="document.getElementById('evalObvInput').click()">
+            <div style="font-size:24px">🪙</div><div style="font-size:9px">FRONT</div>
+          </div>
+          <input type="file" id="evalObvInput" accept="image/*" style="display:none" onchange="loadEvalPhoto(event,'obv')">
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="startEvalCam('obv')">📷</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.getElementById('evalObvInput').click()">📁</button>
+            <button class="btn btn-sm" style="background:transparent;border:1px solid var(--red2);color:var(--red);display:none" id="evalObvClr" onclick="clearEvalPhoto('obv')">✕</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--gold);letter-spacing:1px;text-align:center;margin-bottom:6px">REVERSE</div>
+          <div class="eval-photo-box" id="evalRevBox" onclick="document.getElementById('evalRevInput').click()">
+            <div style="font-size:24px">🦅</div><div style="font-size:9px">BACK</div>
+          </div>
+          <input type="file" id="evalRevInput" accept="image/*" style="display:none" onchange="loadEvalPhoto(event,'rev')">
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="startEvalCam('rev')">📷</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.getElementById('evalRevInput').click()">📁</button>
+            <button class="btn btn-sm" style="background:transparent;border:1px solid var(--red2);color:var(--red);display:none" id="evalRevClr" onclick="clearEvalPhoto('rev')">✕</button>
+          </div>
+        </div>
+      </div>
+      <div class="field"><div class="field-label">CONTEXT (optional)</div><input class="field-input" id="evalContext" placeholder="e.g. possible Morgan, heavily toned..."></div>
+      <div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:8px" id="evalReadyMsg">Add at least one photo to evaluate</div>
+      <button class="btn btn-primary" id="evalBtn" style="display:none" onclick="runEvaluation()">🔬 EVALUATE WITH AI</button>
+    </div>
+    <div id="evalLoading" style="display:none;text-align:center;padding:24px">
+      <div style="font-size:20px;color:var(--gold);letter-spacing:6px">···</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;letter-spacing:2px">ANALYZING</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px" id="evalLoadMsg">examining coin...</div>
+    </div>
+    <div id="evalResults" style="display:none"></div>
+  </div>
+
+  <!-- ── MARKET ── -->
+  <div class="panel" id="panel-market">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0">LIVE SPOT PRICES</div>
+        <button class="btn btn-ghost btn-sm" onclick="fetchSpotPrices()">↻ REFRESH</button>
+      </div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:10px" id="mktLastUpdate">—</div>
+      <div class="grid2" style="gap:8px">
+        <div class="metal-tile"><div class="metal-sym" style="color:var(--green)">AG</div><div style="font-size:9px;color:var(--text3)">Silver</div><div class="metal-price" id="mAg">$—</div><div class="metal-sub" id="mAgG">—/g</div></div>
+        <div class="metal-tile"><div class="metal-sym" style="color:var(--gold)">AU</div><div style="font-size:9px;color:var(--text3)">Gold</div><div class="metal-price" id="mAu">$—</div><div class="metal-sub" id="mAuG">—/g</div></div>
+        <div class="metal-tile"><div class="metal-sym" style="color:#a0b0c0">PT</div><div style="font-size:9px;color:var(--text3)">Platinum</div><div class="metal-price" id="mPt">$—</div><div class="metal-sub" id="mPtG">—/g</div></div>
+        <div class="metal-tile"><div class="metal-sym" style="color:#b0a0c0">PD</div><div style="font-size:9px;color:var(--text3)">Palladium</div><div class="metal-price" id="mPd">$—</div><div class="metal-sub" id="mPdG">—/g</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">RATIOS</div>
+      <div class="grid3">
+        <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:2px"><div style="font-size:8px;color:var(--text3)">GOLD/SILVER</div><div style="font-size:16px;font-weight:700;color:var(--gold)" id="rGS">—</div><div style="font-size:9px" id="rGSs">—</div></div>
+        <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:2px"><div style="font-size:8px;color:var(--text3)">GOLD/PLAT</div><div style="font-size:16px;font-weight:700;color:#a0b0c0" id="rGP">—</div></div>
+        <div style="text-align:center;padding:8px;background:var(--bg3);border-radius:2px"><div style="font-size:8px;color:var(--text3)">PLAT/SILVER</div><div style="font-size:16px;font-weight:700;color:#b0c0a0" id="rPS">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚖ WEIGHT CONVERTER</div>
+      <div class="grid3" style="margin-bottom:8px">
+        <div><div class="field-label">AMOUNT</div><input class="field-input" type="number" id="wAmount" step="0.001" oninput="calcWeight()"></div>
+        <div><div class="field-label">UNIT</div><select class="field-input" id="wUnit" onchange="calcWeight()"><option value="g">g</option><option value="oz">ozt</option><option value="dwt">dwt</option></select></div>
+        <div><div class="field-label">METAL</div><select class="field-input" id="wMetal" onchange="calcWeight()"><option value="silver">Silver</option><option value="gold">Gold</option><option value="platinum">Platinum</option><option value="palladium">Palladium</option></select></div>
+      </div>
+      <div id="wResult" style="display:none">
+        <div class="grid3" style="gap:6px;margin-bottom:8px">
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">GRAMS</div><div style="font-weight:700" id="wr_g">—</div></div>
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">TROY OZ</div><div style="font-weight:700" id="wr_oz">—</div></div>
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">DWT</div><div style="font-weight:700" id="wr_dwt">—</div></div>
+        </div>
+        <div class="grid3" style="gap:6px">
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">SPOT VALUE</div><div style="font-weight:700;color:var(--green)" id="wr_val">—</div></div>
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">BID 80%</div><div style="font-weight:700;color:var(--amber)" id="wr_bid">—</div></div>
+          <div style="text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px"><div style="font-size:8px;color:var(--text3)">ONLINE 95%</div><div style="font-weight:700" id="wr_online">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0">📰 METALS NEWS</div>
+        <button class="btn btn-ghost btn-sm" onclick="fetchNews()">↻ FETCH</button>
+      </div>
+      <div id="newsFeed"><div class="empty-state" style="padding:16px">Tap FETCH for latest news</div></div>
+    </div>
+  </div>
+
+  <!-- ── EMPLOYEES (admin) ── -->
+  <div class="panel" id="panel-employees">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text2)">Employee KPIs & Management</div>
+      <button class="btn btn-green btn-sm" onclick="openAddEmployee()">+ ADD EMPLOYEE</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto">
+      <button class="btn btn-sm btn-ghost" onclick="setKpiPeriod('today',this)">TODAY</button>
+      <button class="btn btn-sm btn-ghost active" onclick="setKpiPeriod('week',this)">THIS WEEK</button>
+      <button class="btn btn-sm btn-ghost" onclick="setKpiPeriod('month',this)">THIS MONTH</button>
+      <button class="btn btn-sm btn-ghost" onclick="setKpiPeriod('all',this)">ALL TIME</button>
+    </div>
+    <div id="employeeKpiList"><div class="empty-state">No employees added yet.</div></div>
+  </div>
+
+  <!-- ── COMPLIANCE (admin) ── -->
+  <div class="panel" id="panel-compliance">
+    <div class="card card.amber">
+      <div class="card-title">🚔 LAW ENFORCEMENT REPORTING</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Generate and track reports submitted to law enforcement agencies.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-green" onclick="generatePoliceReport()">📄 GENERATE REPORT</button>
+        <button class="btn btn-ghost" onclick="openAddAgency()">+ ADD AGENCY</button>
+      </div>
+      <div id="agencyList"><div class="empty-state" style="padding:16px">No agencies added yet.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⏱ HOLD COMPLIANCE TRACKER</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Items currently in mandatory hold period.</div>
+      <div id="holdComplianceList"><div class="empty-state" style="padding:16px">No items in hold.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 REPORT HISTORY</div>
+      <div id="reportHistory"><div class="empty-state" style="padding:16px">No reports generated yet.</div></div>
+    </div>
+  </div>
+
+</div><!-- end mainApp -->
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- New Ticket Modal -->
+<div class="modal-overlay" id="ticketModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="ticketModalTitle">NEW BUY TICKET</span>
+      <button class="modal-close" onclick="closeModal('ticketModal')">✕</button>
+    </div>
+    <div class="modal-body" id="ticketModalBody"></div>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="customerModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="customerModalTitle">CUSTOMER PROFILE</span>
+      <button class="modal-close" onclick="closeModal('customerModal')">✕</button>
+    </div>
+    <div class="modal-body" id="customerModalBody"></div>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal-overlay" id="employeeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">ADD EMPLOYEE</span>
+      <button class="modal-close" onclick="closeModal('employeeModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">EMPLOYEE NAME</div><input class="field-input" id="empName"></div>
+      <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-align:center;margin-bottom:8px">EMPLOYEE PIN (4 digits)</div>
+      <div class="pin-dots" style="margin-bottom:14px">
+        <div class="pin-dot" id="empd0"></div><div class="pin-dot" id="empd1"></div><div class="pin-dot" id="empd2"></div><div class="pin-dot" id="empd3"></div>
+      </div>
+      <div class="pin-pad" style="margin:0 auto 14px">
+        <button class="pin-btn" onclick="empPinPress(1)">1</button><button class="pin-btn" onclick="empPinPress(2)">2</button><button class="pin-btn" onclick="empPinPress(3)">3</button>
+        <button class="pin-btn" onclick="empPinPress(4)">4</button><button class="pin-btn" onclick="empPinPress(5)">5</button><button class="pin-btn" onclick="empPinPress(6)">6</button>
+        <button class="pin-btn" onclick="empPinPress(7)">7</button><button class="pin-btn" onclick="empPinPress(8)">8</button><button class="pin-btn" onclick="empPinPress(9)">9</button>
+        <button class="pin-btn zero" onclick="empPinPress(0)">0</button><button class="pin-btn del" onclick="empPinDel()">⌫</button>
+      </div>
+      <div id="empPinError" style="font-size:11px;color:var(--red);text-align:center;min-height:16px;margin-bottom:8px"></div>
+      <button class="btn btn-primary" onclick="saveNewEmployee()">ADD EMPLOYEE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Agency Modal -->
+<div class="modal-overlay" id="agencyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">ADD LAW ENFORCEMENT AGENCY</span>
+      <button class="modal-close" onclick="closeModal('agencyModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">AGENCY NAME</div><input class="field-input" id="agName" placeholder="City Police Department"></div>
+      <div class="grid2">
+        <div class="field"><div class="field-label">TYPE</div><select class="field-input" id="agType"><option>Local PD</option><option>County Sheriff</option><option>State Police</option><option>Federal</option><option>Other</option></select></div>
+        <div class="field"><div class="field-label">STATE</div><input class="field-input" id="agState" maxlength="2" placeholder="MI"></div>
+      </div>
+      <div class="field"><div class="field-label">CONTACT NAME</div><input class="field-input" id="agContact" placeholder="Det. Smith"></div>
+      <div class="grid2">
+        <div class="field"><div class="field-label">PHONE</div><input class="field-input" id="agPhone"></div>
+        <div class="field"><div class="field-label">EMAIL</div><input class="field-input" id="agEmail" type="email"></div>
+      </div>
+      <div class="field"><div class="field-label">REPORT FREQUENCY</div><select class="field-input" id="agFreq"><option>Daily</option><option>Weekly</option><option>Monthly</option><option>As Required</option></select></div>
+      <button class="btn btn-primary" onclick="saveAgency()">ADD AGENCY</button>
+    </div>
+  </div>
+</div>
+
+<!-- Police Report Modal -->
+<div class="modal-overlay" id="policeReportModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">POLICE REPORT</span>
+      <button class="modal-close" onclick="closeModal('policeReportModal')">✕</button>
+    </div>
+    <div class="modal-body" id="policeReportBody"></div>
+  </div>
+</div>
+
+<!-- Customer Mode Overlay -->
+<div id="customerModeOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:150;overflow-y:auto;font-family:'Courier New',monospace">
+  <div style="max-width:640px;margin:0 auto;padding:20px 16px 80px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:22px;font-weight:700;color:var(--gold);letter-spacing:3px" id="cmShopName">DOWNTOWN PAWNSHOP</div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:2px;margin-top:4px">PRECIOUS METALS VALUE ESTIMATOR</div>
+      <div style="margin-top:8px;font-size:13px;color:var(--green)">Silver: <span style="font-weight:700" id="cmSpot">$—</span>/oz · Gold: <span style="color:var(--gold);font-weight:700" id="cmGold">$—</span>/oz</div>
+      <button onclick="toggleCustomerMode()" style="margin-top:12px;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:inherit;font-size:10px;padding:6px 16px;cursor:pointer;letter-spacing:1px;border-radius:var(--radius)">← STAFF VIEW</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--text3);letter-spacing:2px;margin-bottom:10px">TODAY'S METAL PRICES</div>
+      <div class="grid4" id="cmMetals">
+        <div style="text-align:center"><div style="font-size:9px;color:var(--text3)">SILVER</div><div style="font-size:14px;font-weight:700;color:var(--green)" id="cmSilver">$—</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:var(--text3)">GOLD</div><div style="font-size:14px;font-weight:700;color:var(--gold)" id="cmGoldTile">$—</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:var(--text3)">PLATINUM</div><div style="font-size:14px;font-weight:700;color:#a0b0c0" id="cmPt">$—</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:var(--text3)">PALLADIUM</div><div style="font-size:14px;font-weight:700;color:#b0a0c0" id="cmPd">$—</div></div>
+      </div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--text3);letter-spacing:2px;margin-bottom:10px">WHAT DO YOU HAVE?</div>
+      <div id="cmCoinRows"></div>
+      <button onclick="addCmRow()" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:inherit;font-size:10px;cursor:pointer;margin-top:8px;letter-spacing:1px;border-radius:var(--radius)">+ ADD ANOTHER</button>
+    </div>
+    <div id="cmResult" style="display:none;background:var(--bg2);border:1px solid var(--green2);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--green);letter-spacing:2px;margin-bottom:10px">YOUR COINS ARE WORTH</div>
+      <div style="font-size:34px;font-weight:700;color:var(--green);text-align:center;margin-bottom:4px" id="cmTotal">$0.00</div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:14px">silver melt value</div>
+      <div class="grid2" style="gap:8px;margin-bottom:12px">
+        <div style="text-align:center;padding:10px;background:var(--bg3);border-radius:2px"><div style="font-size:9px;color:var(--text3);margin-bottom:3px">SHOP OFFER (~80%)</div><div style="font-size:18px;font-weight:700;color:var(--amber)" id="cmOffer">$0.00</div></div>
+        <div style="text-align:center;padding:10px;background:var(--bg3);border-radius:2px"><div style="font-size:9px;color:var(--text3);margin-bottom:3px">ONLINE VALUE (~95%)</div><div style="font-size:18px;font-weight:700;color:var(--green)" id="cmOnline">$0.00</div></div>
+      </div>
+      <div id="cmBreakdown" style="font-size:10px"></div>
+      <div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:2px;font-size:11px;color:var(--text2)" id="cmAdvice"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONSTANTS & DATA
+// ══════════════════════════════════════════
+const PIN_SALT = 'DPS_SALT_2024_';
+const IDLE_MS = 5*60*1000;
+const COIN_OZ = {'Peace Dollar':0.7735,'Morgan Dollar':0.7735,'Walking Liberty Half':0.3617,'Franklin Half':0.3617,'Kennedy Half (1964)':0.3617,'Kennedy Half (1965-70)':0.1479,'Barber Half':0.3617,'Seated Liberty Half':0.3617,'Washington Quarter':0.1808,'Standing Liberty Quarter':0.1808,'Barber Quarter':0.1808,'Mercury Dime':0.0723,'Roosevelt Dime':0.0723,'Barber Dime':0.0723,'War Nickel (35%)':0.0563,'1oz Silver Round':1.0,'1oz Silver Bar':1.0,'American Silver Eagle':1.0};
+const COIN_TYPES = Object.keys(COIN_OZ);
+const COIN_SPECS = {'Peace Dollar':{weight:26.73,tol:0.30,dia:38.1},'Morgan Dollar':{weight:26.73,tol:0.30,dia:38.1},'Walking Liberty Half':{weight:12.50,tol:0.20,dia:30.6},'Franklin Half':{weight:12.50,tol:0.20,dia:30.6},'Kennedy Half (1964)':{weight:12.50,tol:0.20,dia:30.6},'Washington Quarter':{weight:6.25,tol:0.15,dia:24.3},'Mercury Dime':{weight:2.50,tol:0.10,dia:17.9},'American Silver Eagle':{weight:31.10,tol:0.10,dia:40.6}};
+const TICKET_LABELS = {B:'BUY',S:'SELL',L:'LOAN',LY:'LAYAWAY'};
+const TICKET_COLORS = {B:'var(--green)',S:'var(--blue)',L:'#c084fc',LY:'#67e8f9'};
+
+// ── STATE ──
+let db = {
+  store:{name:'Downtown Pawnshop',address:'',city:'',state:'MI',zip:'',phone:'',license:'',holdDays:10},
+  employees:[], customers:[], inventory:[], tickets:[], agencies:[], reports:[], spotHistory:[]
+};
+let metalPrices = {silver:0,gold:0,platinum:0,palladium:0};
+let spot = 0;
+let currentEmployee = null;
+let isAdmin = false;
+let idleTimer = null;
+let lockEntry = '';
+let lockAttempts = 0;
+let lockUntil = 0;
+let kpiPeriod = 'week';
+let ticketFilter = 'all';
+let invFilter = 'all';
+let cmRows = [];
+// setup state
+let setupAdminPin = ''; setupAdminStage = 'enter'; setupAdminNew = '';
+let setupEmpPin = '';
+// employee modal
+let empPinEntry = '';
+// settings pin
+let stPinEntry = ''; stPinStage = 'current'; stPinNew = '';
+// eval photos
+let evalPhotos = {obv:null,rev:null};
+let evalCamStreams = {obv:null,rev:null};
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadDb();
+  const hasAdmin = localStorage.getItem('dps_admin_hash');
+  if (!hasAdmin) { showSetupScreen(); }
+  else { document.getElementById('lockScreen').style.display='flex'; updateHeaderDate(); }
+});
+
+function loadDb() {
+  try { const s=localStorage.getItem('dps_db'); if(s) db=JSON.parse(s); } catch(e){}
+  document.getElementById('lockShopName').textContent = db.store.name.toUpperCase();
+}
+function saveDb() { localStorage.setItem('dps_db',JSON.stringify(db)); }
+function fc(n){ return '$'+(parseFloat(n)||0).toFixed(2); }
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+async function hashPin(pin){ const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(PIN_SALT+pin)); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+function updateHeaderDate(){
+  const el=document.getElementById('headerDate');
+  if(el) el.textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// ══════════════════════════════════════════
+// SETUP FLOW
+// ══════════════════════════════════════════
+function showSetupScreen(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('setupScreen').style.display='flex'; }
+
+function setupStep1Next(){
+  const name=document.getElementById('ssShopName').value.trim();
+  const key=document.getElementById('ssApiKey').value.trim();
+  const err=document.getElementById('ss1Error');
+  if(!name){err.textContent='Shop name required.';return;}
+  if(key && !key.startsWith('sk-ant-')){err.textContent='Invalid API key format.';return;}
+  db.store.name=name; db.store.address=document.getElementById('ssAddress').value;
+  db.store.city=document.getElementById('ssCity').value; db.store.state=document.getElementById('ssState').value.toUpperCase()||'MI';
+  db.store.zip=document.getElementById('ssZip').value; db.store.phone=document.getElementById('ssPhone').value;
+  db.store.license=document.getElementById('ssLicense').value;
+  db.store.holdDays=parseInt(document.getElementById('ssHoldDays').value)||10;
+  if(key) localStorage.setItem('dps_api_key',key);
+  err.textContent='';
+  document.getElementById('ss1').style.display='none'; document.getElementById('ss2').style.display='block';
+  document.getElementById('ps0').classList.remove('active'); document.getElementById('ps0').classList.add('done');
+  document.getElementById('ps1').classList.add('active');
+  setupAdminPin=''; setupAdminStage='enter'; setupAdminNew=''; updateSetupAdminDots();
+}
+
+function setupPinPress(n){ if(setupAdminPin.length>=4)return; setupAdminPin+=n; updateSetupAdminDots(); if(setupAdminPin.length===4)setTimeout(processSetupAdmin,150); }
+function setupPinDel(){ setupAdminPin=setupAdminPin.slice(0,-1); updateSetupAdminDots(); }
+function updateSetupAdminDots(){ for(let i=0;i<4;i++)document.getElementById('sd'+i).classList.toggle('filled',i<setupAdminPin.length); }
+
+async function processSetupAdmin(){
+  if(setupAdminStage==='enter'){ setupAdminNew=setupAdminPin; setupAdminStage='confirm'; setupAdminPin=''; updateSetupAdminDots(); document.getElementById('ss2Label').textContent='CONFIRM ADMIN PIN'; }
+  else{
+    if(setupAdminPin===setupAdminNew){
+      const h=await hashPin(setupAdminPin); localStorage.setItem('dps_admin_hash',h);
+      document.getElementById('ss2').style.display='none'; document.getElementById('ss3').style.display='block';
+      document.getElementById('ps1').classList.remove('active'); document.getElementById('ps1').classList.add('done');
+      document.getElementById('ps2').classList.add('active');
+      setupEmpPin=''; updateSetupEmpDots();
+    } else { document.getElementById('ss2Error').textContent='PINs do not match'; setupAdminStage='enter'; setupAdminPin=''; setupAdminNew=''; updateSetupAdminDots(); document.getElementById('ss2Label').textContent='ENTER ADMIN PIN'; }
+  }
+}
+
+function setupEmpPinPress(n){ if(setupEmpPin.length>=4)return; setupEmpPin+=n; updateSetupEmpDots(); }
+function setupEmpPinDel(){ setupEmpPin=setupEmpPin.slice(0,-1); updateSetupEmpDots(); }
+function updateSetupEmpDots(){ for(let i=0;i<4;i++)document.getElementById('se'+i).classList.toggle('filled',i<setupEmpPin.length); }
+
+async function setupFinish(skip=false){
+  const name=document.getElementById('ssEmpName').value.trim();
+  if(!skip){
+    if(!name){document.getElementById('ss3Error').textContent='Enter employee name.';return;}
+    if(setupEmpPin.length!==4){document.getElementById('ss3Error').textContent='Enter a 4-digit PIN.';return;}
+    const h=await hashPin(setupEmpPin);
+    db.employees.push({id:genId(),name,pinHash:h,role:'staff',active:true,createdAt:new Date().toISOString()});
+  }
+  saveDb();
+  document.getElementById('setupScreen').style.display='none';
+  launchApp(true);
+}
+
+// ══════════════════════════════════════════
+// LOCK / UNLOCK
+// ══════════════════════════════════════════
+function lockPress(n){
+  const now=Date.now(); if(now<lockUntil)return;
+  if(lockEntry.length>=4)return;
+  lockEntry+=n; updateLockDots();
+  if(lockEntry.length===4)setTimeout(checkLock,150);
+}
+function lockDel(){ lockEntry=lockEntry.slice(0,-1); updateLockDots(); document.getElementById('lockError').textContent=''; }
+function updateLockDots(){ for(let i=0;i<4;i++)document.getElementById('ld'+i).classList.toggle('filled',i<lockEntry.length); }
+
+async function checkLock(){
+  const adminHash=localStorage.getItem('dps_admin_hash');
+  const inputHash=await hashPin(lockEntry);
+  // Check admin
+  if(inputHash===adminHash){ unlockAs(null,true); return; }
+  // Check employees
+  for(const emp of db.employees.filter(e=>e.active)){
+    if(inputHash===emp.pinHash){ unlockAs(emp,false); return; }
+  }
+  // Fail
+  lockAttempts++;
+  lockEntry=''; updateLockDots();
+  if(lockAttempts>=3){ lockUntil=Date.now()+30000; startLockCountdown(); }
+  else { document.getElementById('lockError').textContent='Incorrect PIN · '+(3-lockAttempts)+' attempts left'; }
+}
+
+function startLockCountdown(){
+  const el=document.getElementById('lockError');
+  const t=setInterval(()=>{
+    const rem=Math.ceil((lockUntil-Date.now())/1000);
+    if(rem<=0){clearInterval(t);lockAttempts=0;el.textContent='';document.getElementById('lockMeta').textContent='';}
+    else el.textContent='Locked — '+rem+'s';
+  },250);
+}
+
+function unlockAs(employee, admin){
+  currentEmployee=employee; isAdmin=admin;
+  lockEntry=''; lockAttempts=0; updateLockDots();
+  document.getElementById('lockError').textContent='';
+  document.getElementById('lockScreen').style.display='none';
+  launchApp(false);
+}
+
+function launchApp(fresh){
+  document.getElementById('mainApp').style.display='block';
+  document.getElementById('headerShopName').textContent=db.store.name.toUpperCase();
+  document.getElementById('headerEmployee').textContent=isAdmin?'ADMIN':(currentEmployee?.name||'Staff');
+  document.getElementById('adminBtn').style.display=isAdmin?'block':'none';
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAdmin?'':'none');
+  updateHeaderDate();
+  startIdleTimer();
+  fetchSpotPrices();
+  showTab('dash');
+}
+
+function lockApp(){
+  currentEmployee=null; isAdmin=false;
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('lockScreen').style.display='flex';
+  clearTimeout(idleTimer);
+  lockEntry=''; updateLockDots();
+  document.getElementById('lockError').textContent='';
+}
+
+function startIdleTimer(){ clearTimeout(idleTimer); idleTimer=setTimeout(lockApp,IDLE_MS); }
+function resetIdle(){ if(document.getElementById('mainApp').style.display!=='none')startIdleTimer(); }
+document.addEventListener('touchstart',resetIdle,{passive:true});
+document.addEventListener('click',resetIdle);
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function showTab(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#tabBar .tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('panel-'+name);
+  if(panel)panel.classList.add('active');
+  document.querySelectorAll('#tabBar .tab').forEach(t=>{if(t.textContent.toLowerCase().includes(name.toLowerCase()))t.classList.add('active');});
+  if(name==='dash')renderDash();
+  if(name==='tickets')renderTickets();
+  if(name==='customers')renderCustomers();
+  if(name==='inventory')renderInventory();
+  if(name==='employees')renderEmployeeKpis();
+  if(name==='compliance')renderCompliance();
+  if(name==='market')fetchSpotPrices();
+}
+
+// ══════════════════════════════════════════
+// SPOT PRICES
+// ══════════════════════════════════════════
+async function fetchSpotPrices(){
+  try{
+    const r=await fetch('https://api.metals.live/v1/spot');
+    const data=await r.json();
+    const d=Array.isArray(data)?data[0]:data;
+    metalPrices.silver=parseFloat(d.silver||d.XAG||0);
+    metalPrices.gold=parseFloat(d.gold||d.XAU||0);
+    metalPrices.platinum=parseFloat(d.platinum||d.XPT||0);
+    metalPrices.palladium=parseFloat(d.palladium||d.XPD||0);
+    if(metalPrices.silver>0)spot=metalPrices.silver;
+  }catch(e){ if(!spot)spot=32; metalPrices={silver:spot,gold:spot*82,platinum:spot*15,palladium:spot*17}; }
+  updateSpotDisplay();
+}
+
+function updateSpotDisplay(){
+  const fmt=(n)=>n>0?'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'$—';
+  ['hSpot','mAg','cmSilver'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(metalPrices.silver);});
+  ['hGold','mAu','cmGold','cmGoldTile'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(metalPrices.gold);});
+  ['hPt','mPt','cmPt'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(metalPrices.platinum);});
+  const pd=document.getElementById('mPd');if(pd)pd.textContent=fmt(metalPrices.palladium);
+  const cpd=document.getElementById('cmPd');if(cpd)cpd.textContent=fmt(metalPrices.palladium);
+  const cs=document.getElementById('cmSpot');if(cs)cs.textContent=fmt(metalPrices.silver);
+  if(document.getElementById('mAgG'))document.getElementById('mAgG').textContent=metalPrices.silver>0?'$'+(metalPrices.silver/31.1035).toFixed(4)+'/g':'—';
+  if(document.getElementById('mAuG'))document.getElementById('mAuG').textContent=metalPrices.gold>0?'$'+(metalPrices.gold/31.1035).toFixed(2)+'/g':'—';
+  if(document.getElementById('mPtG'))document.getElementById('mPtG').textContent=metalPrices.platinum>0?'$'+(metalPrices.platinum/31.1035).toFixed(2)+'/g':'—';
+  const lu=document.getElementById('mktLastUpdate');if(lu)lu.textContent='Updated: '+new Date().toLocaleTimeString();
+  if(metalPrices.gold&&metalPrices.silver){
+    const gs=(metalPrices.gold/metalPrices.silver).toFixed(1);
+    const rgs=document.getElementById('rGS');if(rgs)rgs.textContent=gs+':1';
+    const rgsS=document.getElementById('rGSs');
+    if(rgsS){rgsS.textContent=gs<50?'▲ BUY SILVER':gs<75?'→ NEUTRAL':'▼ HIGH';rgsS.style.color=gs<50?'var(--green)':gs<75?'var(--amber)':'var(--red)';}
+  }
+  if(metalPrices.gold&&metalPrices.platinum){const gp=document.getElementById('rGP');if(gp)gp.textContent=(metalPrices.gold/metalPrices.platinum).toFixed(2)+':1';}
+  if(metalPrices.platinum&&metalPrices.silver){const ps=document.getElementById('rPS');if(ps)ps.textContent=(metalPrices.platinum/metalPrices.silver).toFixed(1)+':1';}
+}
+
+// ══════════════════════════════════════════
+// WEIGHT CONVERTER
+// ══════════════════════════════════════════
+function calcWeight(){
+  const val=parseFloat(document.getElementById('wAmount').value)||0;
+  const unit=document.getElementById('wUnit').value;
+  const metal=document.getElementById('wMetal').value;
+  const res=document.getElementById('wResult');
+  if(!val){res.style.display='none';return;}
+  let oz;
+  if(unit==='g')oz=val/31.1035;
+  else if(unit==='oz')oz=val;
+  else oz=val/20;
+  const price=metalPrices[metal]||spot;
+  const g=oz*31.1035, dwt=oz*20, sv=oz*price;
+  document.getElementById('wr_g').textContent=g.toFixed(4)+'g';
+  document.getElementById('wr_oz').textContent=oz.toFixed(4)+' ozt';
+  document.getElementById('wr_dwt').textContent=dwt.toFixed(4)+' dwt';
+  document.getElementById('wr_val').textContent=fc(sv);
+  document.getElementById('wr_bid').textContent=fc(sv*0.8);
+  document.getElementById('wr_online').textContent=fc(sv*0.95);
+  res.style.display='block';
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDash(){
+  const todayStr=today();
+  const todayTickets=db.tickets.filter(t=>t.date===todayStr);
+  const bought=todayTickets.filter(t=>t.type==='B').length;
+  const sold=todayTickets.filter(t=>t.type==='S').length;
+  const inHold=db.inventory.filter(i=>i.status==='hold').length;
+  const clearToday=db.inventory.filter(i=>{
+    if(!i.holdStart)return false;
+    const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+(db.store.holdDays||10));
+    return clear.toISOString().slice(0,10)===todayStr&&i.status==='hold';
+  }).length;
+  const todayRevenue=todayTickets.filter(t=>t.type==='S').reduce((a,t)=>a+(t.totalAmount||0),0);
+  const invVal=db.inventory.filter(i=>i.status!=='sold').reduce((a,i)=>a+(i.meltValue||0),0);
+  document.getElementById('dTodayBought').textContent=bought;
+  document.getElementById('dTodaySold').textContent=sold;
+  document.getElementById('dInHold').textContent=inHold;
+  document.getElementById('dClearToday').textContent=clearToday;
+  document.getElementById('dRevenue').textContent=fc(todayRevenue);
+  document.getElementById('dInvValue').textContent=fc(invVal);
+  // Hold alerts
+  const alerts=db.inventory.filter(i=>{
+    if(!i.holdStart||i.status!=='hold')return false;
+    const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+(db.store.holdDays||10));
+    const diff=Math.ceil((clear-new Date())/(1000*60*60*24));
+    return diff<=2;
+  });
+  const hal=document.getElementById('holdAlertList');
+  if(alerts.length){
+    hal.innerHTML=alerts.map(i=>{
+      const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+(db.store.holdDays||10));
+      const diff=Math.ceil((clear-new Date())/(1000*60*60*24));
+      return `<div class="alert-row"><div class="alert-dot" style="background:${diff<=0?'var(--green)':diff===1?'var(--amber)':'var(--text3)'}"></div><div style="flex:1"><div style="font-size:12px">${i.description}</div><div style="font-size:10px;color:var(--text3)">${diff<=0?'CLEAR TO SELL':'Clears in '+diff+'d'} · ${fc(i.buyPrice||0)} paid</div></div></div>`;
+    }).join('');
+  } else hal.innerHTML='<div class="empty-state" style="padding:16px">No hold alerts.</div>';
+  // Recent activity
+  const recent=[...db.tickets].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,6);
+  const ra=document.getElementById('recentActivity');
+  if(recent.length){
+    ra.innerHTML=recent.map(t=>{
+      const emp=db.employees.find(e=>e.id===t.employeeId);
+      const cust=db.customers.find(c=>c.id===t.customerId);
+      return `<div class="alert-row"><div class="alert-dot" style="background:${TICKET_COLORS[t.type]}"></div><div style="flex:1"><div style="font-size:12px">${t.ticketNumber} · ${fc(t.totalAmount||0)}</div><div style="font-size:10px;color:var(--text3)">${TICKET_LABELS[t.type]} · ${cust?cust.firstName+' '+cust.lastName:'No customer'} · ${emp?emp.name:isAdmin?'Admin':'Staff'}</div></div><div style="font-size:10px;color:var(--text3)">${t.date}</div></div>`;
+    }).join('');
+  } else ra.innerHTML='<div class="empty-state" style="padding:16px">No activity yet.</div>';
+}
+
+// ══════════════════════════════════════════
+// TICKETS
+// ══════════════════════════════════════════
+function genTicketNum(type){
+  const prefix={B:'BUY',S:'SLL',L:'LN',LY:'LAY'}[type]||type;
+  const d=new Date(); const dateStr=d.getFullYear().toString().slice(-2)+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0');
+  const count=(db.tickets.filter(t=>t.type===type&&t.date===today()).length+1).toString().padStart(3,'0');
+  return `DPS-${prefix}-${dateStr}-${count}`;
+}
+
+function openNewTicket(type){
+  document.getElementById('ticketModalTitle').textContent=`NEW ${TICKET_LABELS[type]} TICKET`;
+  document.getElementById('ticketModalBody').innerHTML=renderTicketForm(type);
+  document.getElementById('ticketModal').classList.add('open');
+}
+
+function renderTicketForm(type){
+  const custOpts=db.customers.map(c=>`<option value="${c.id}">${c.firstName} ${c.lastName} — ${c.idNumber||'No ID'}</option>`).join('');
+  const coinOpts=type==='S'?db.inventory.filter(i=>i.status==='clear'||i.status==='hold').map(i=>`<option value="${i.id}">${i.description} · ${fc(i.buyPrice)} · ${i.status.toUpperCase()}</option>`).join(''):COIN_TYPES.map(t=>`<option>${t}</option>`).join('');
+  let extra='';
+  if(type==='L') extra=`<div class="field"><div class="field-label">LOAN DUE DATE</div><input class="field-input" type="date" id="tfLoanDue" value="${new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10)}"></div><div class="field"><div class="field-label">INTEREST RATE (%/month)</div><input class="field-input" type="number" id="tfInterest" value="20" step="0.5"></div>`;
+  if(type==='LY') extra=`<div class="field"><div class="field-label">TOTAL PRICE ($)</div><input class="field-input" type="number" id="tfLayTotal" step="0.01" placeholder="0.00"></div><div class="field"><div class="field-label">DOWN PAYMENT ($)</div><input class="field-input" type="number" id="tfLayDown" step="0.01" placeholder="0.00"></div><div class="field"><div class="field-label">DUE DATE</div><input class="field-input" type="date" id="tfLayDue"></div>`;
+  return `
+    <div class="field"><div class="field-label">CUSTOMER</div>
+      <select class="field-input" id="tfCustomer"><option value="">-- Walk-in / No customer --</option>${custOpts}</select>
+      <button class="btn btn-ghost btn-sm" onclick="openNewCustomer(true)" style="margin-top:6px;width:100%">+ ADD NEW CUSTOMER</button>
+    </div>
+    ${type!=='S'?`
+    <div class="field"><div class="field-label">ITEM DESCRIPTION</div><input class="field-input" id="tfDesc" placeholder="1942 Walking Liberty Half Dollar, VF"></div>
+    <div class="grid2">
+      <div class="field"><div class="field-label">COIN TYPE</div><select class="field-input" id="tfCoinType" onchange="updateTicketMelt()">${COIN_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+      <div class="field"><div class="field-label">GRADE</div><select class="field-input" id="tfGrade"><option>AG</option><option>G</option><option selected>VG</option><option>F</option><option>VF</option><option>XF</option><option>AU</option><option>MS</option></select></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><div class="field-label">YEAR</div><input class="field-input" id="tfYear" placeholder="1942"></div>
+      <div class="field"><div class="field-label">MINT</div><select class="field-input" id="tfMint"><option value="">—</option><option>P</option><option>D</option><option>S</option><option>O</option><option>CC</option></select></div>
+      <div class="field"><div class="field-label">QTY</div><input class="field-input" type="number" id="tfQty" value="1" min="1" oninput="updateTicketMelt()"></div>
+    </div>
+    <div id="tfMeltBox" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:10px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+      <div><div style="font-size:8px;color:var(--text3)">MELT VALUE</div><div style="font-weight:700;color:var(--green)" id="tfMelt">$—</div></div>
+      <div><div style="font-size:8px;color:var(--text3)">OFFER 80%</div><div style="font-weight:700;color:var(--amber)" id="tfOffer">$—</div></div>
+      <div><div style="font-size:8px;color:var(--text3)">OFFER 90%</div><div style="font-weight:700;color:var(--text)" id="tfOffer2">$—</div></div>
+    </div>
+    <div class="field"><div class="field-label">WEIGHT (g) — optional</div><input class="field-input" type="number" id="tfWeight" step="0.01" placeholder="actual weight"></div>
+    `:`
+    <div class="field"><div class="field-label">SELECT INVENTORY ITEM</div><select class="field-input" id="tfInvItem">${coinOpts}</select></div>
+    `}
+    <div class="field"><div class="field-label">${type==='B'?'AMOUNT PAID':'SALE PRICE'} ($)</div><input class="field-input" type="number" id="tfAmount" step="0.01" placeholder="0.00" oninput="updateTicketMelt()"></div>
+    ${extra}
+    <div class="field"><div class="field-label">NOTES</div><input class="field-input" id="tfNotes" placeholder="Any notes..."></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" onclick="saveTicket('${type}')" style="flex:1">${type==='B'?'CREATE BUY TICKET':type==='S'?'COMPLETE SALE':type==='L'?'ISSUE LOAN':'CREATE LAYAWAY'}</button>
+    </div>`;
+}
+
+function updateTicketMelt(){
+  const type=document.getElementById('tfCoinType')?.value||'';
+  const qty=parseInt(document.getElementById('tfQty')?.value)||1;
+  const oz=(COIN_OZ[type]||0)*qty;
+  const melt=oz*spot;
+  if(document.getElementById('tfMelt'))document.getElementById('tfMelt').textContent=fc(melt);
+  if(document.getElementById('tfOffer'))document.getElementById('tfOffer').textContent=fc(melt*0.8);
+  if(document.getElementById('tfOffer2'))document.getElementById('tfOffer2').textContent=fc(melt*0.9);
+}
+
+async function saveTicket(type){
+  const amount=parseFloat(document.getElementById('tfAmount')?.value)||0;
+  if(!amount){alert('Enter amount.');return;}
+  const custId=document.getElementById('tfCustomer')?.value||'';
+  const coinType=document.getElementById('tfCoinType')?.value||'';
+  const qty=parseInt(document.getElementById('tfQty')?.value)||1;
+  const oz=(COIN_OZ[coinType]||0)*qty;
+  const melt=oz*spot;
+  const ticket={
+    id:genId(), type, ticketNumber:genTicketNum(type),
+    date:today(), createdAt:new Date().toISOString(),
+    employeeId:currentEmployee?.id||'admin',
+    customerId:custId,
+    totalAmount:amount,
+    meltValue:melt,
+    notes:document.getElementById('tfNotes')?.value||'',
+    status:'active',
+    policeReported:false,
+    complianceStatus:'pending',
+  };
+  if(type==='L'){ticket.loanDueDate=document.getElementById('tfLoanDue')?.value; ticket.interestRate=parseFloat(document.getElementById('tfInterest')?.value)||0;}
+  if(type==='LY'){ticket.layawayTotal=parseFloat(document.getElementById('tfLayTotal')?.value)||0; ticket.layawayDown=parseFloat(document.getElementById('tfLayDown')?.value)||0; ticket.layawayDue=document.getElementById('tfLayDue')?.value;}
+  // Create inventory item for buys/loans
+  if(type==='B'||type==='L'){
+    const desc=document.getElementById('tfDesc')?.value||(document.getElementById('tfYear')?.value||'')+' '+(coinType||'Item');
+    const holdStart=today();
+    const invItem={
+      id:genId(), ticketId:ticket.id,
+      description:desc.trim()||coinType,
+      coinType, grade:document.getElementById('tfGrade')?.value||'',
+      year:document.getElementById('tfYear')?.value||'', mintMark:document.getElementById('tfMint')?.value||'',
+      qty, weightG:parseFloat(document.getElementById('tfWeight')?.value)||0,
+      oz, meltValue:melt, buyPrice:amount,
+      holdStart, status:'hold',
+      employeeId:ticket.employeeId, customerId:custId,
+      createdAt:new Date().toISOString(),
+    };
+    db.inventory.push(invItem);
+    ticket.inventoryIds=[invItem.id];
+  }
+  if(type==='S'){
+    const invId=document.getElementById('tfInvItem')?.value;
+    const inv=db.inventory.find(i=>i.id===invId);
+    if(inv){inv.status='sold';inv.soldPrice=amount;inv.soldDate=today();inv.sellTicketId=ticket.id;}
+    ticket.inventoryIds=[invId];
+    ticket.margin=inv?amount-(inv.buyPrice||0):0;
+  }
+  db.tickets.push(ticket);
+  saveDb();
+  closeModal('ticketModal');
+  renderDash();
+  renderTickets();
+  alert('✓ '+TICKET_LABELS[type]+' ticket '+ticket.ticketNumber+' created.');
+}
+
+function renderTickets(){
+  const list=document.getElementById('ticketList');
+  const filtered=[...db.tickets].filter(t=>ticketFilter==='all'||t.type===ticketFilter).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  if(!filtered.length){list.innerHTML='<div class="empty-state">No tickets yet.</div>';return;}
+  list.innerHTML=filtered.map(t=>{
+    const emp=db.employees.find(e=>e.id===t.employeeId);
+    const cust=db.customers.find(c=>c.id===t.customerId);
+    return `<div class="ticket-card ticket-type-${t.type}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="ticket-num">${t.ticketNumber}</div>
+        <div class="ticket-meta">${cust?cust.firstName+' '+cust.lastName:'Walk-in'} · ${emp?emp.name:isAdmin?'Admin':'Staff'} · ${t.date}</div></div>
+        <div style="text-align:right"><div style="font-size:16px;font-weight:700;color:${TICKET_COLORS[t.type]}">${fc(t.totalAmount)}</div>
+        <span class="badge" style="color:${TICKET_COLORS[t.type]};border-color:${TICKET_COLORS[t.type]}">${TICKET_LABELS[t.type]}</span></div>
+      </div>
+      ${t.notes?`<div style="font-size:10px;color:var(--text3);margin-top:6px">${t.notes}</div>`:''}
+      ${t.type==='L'?`<div style="font-size:10px;color:#c084fc;margin-top:4px">Due: ${t.loanDueDate||'—'} · ${t.interestRate||0}%/mo</div>`:''}
+      ${t.type==='S'&&t.margin?`<div style="font-size:10px;margin-top:4px">Margin: <span style="color:${t.margin>=0?'var(--green)':'var(--red)'}">${t.margin>=0?'+':''}${fc(t.margin)}</span></div>`:''}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" onclick="viewTicket('${t.id}')">VIEW</button>
+        ${!t.policeReported&&isAdmin?`<button class="btn btn-sm" style="background:transparent;border:1px solid #1e3a5f;color:#60a5fa;font-family:inherit;cursor:pointer" onclick="markReported('${t.id}')">MARK REPORTED</button>`:''}
+        ${t.policeReported?`<span style="font-size:9px;color:var(--green);padding:5px">✓ REPORTED</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterTickets(f,btn){
+  ticketFilter=f;
+  document.querySelectorAll('#panel-tickets .btn-sm').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderTickets();
+}
+
+function markReported(id){
+  const t=db.tickets.find(t=>t.id===id);
+  if(t){t.policeReported=true;t.reportedDate=today();saveDb();renderTickets();}
+}
+
+function viewTicket(id){
+  const t=db.tickets.find(t=>t.id===id);
+  if(!t)return;
+  const cust=db.customers.find(c=>c.id===t.customerId);
+  const emp=db.employees.find(e=>e.id===t.employeeId);
+  const items=db.inventory.filter(i=>(t.inventoryIds||[]).includes(i.id));
+  alert(`${t.ticketNumber}\n${TICKET_LABELS[t.type]} · ${t.date}\nAmount: ${fc(t.totalAmount)}\nCustomer: ${cust?cust.firstName+' '+cust.lastName:'Walk-in'}\nEmployee: ${emp?emp.name:'Admin'}\nItems: ${items.map(i=>i.description).join(', ')||'—'}\nNotes: ${t.notes||'—'}\nPolice Reported: ${t.policeReported?'Yes ('+t.reportedDate+')':'No'}`);
+}
+
+// ══════════════════════════════════════════
+// CUSTOMERS
+// ══════════════════════════════════════════
+let pendingIdPhoto=null;
+let newCustFromTicket=false;
+
+function openNewCustomer(fromTicket=false){
+  newCustFromTicket=fromTicket;
+  document.getElementById('customerModalTitle').textContent='NEW CUSTOMER';
+  document.getElementById('customerModalBody').innerHTML=renderCustomerForm(null);
+  document.getElementById('customerModal').classList.add('open');
+}
+
+function renderCustomerForm(cust){
+  const states=['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+  const idTypes=['Driver License','State ID','Passport','Military ID','Tribal ID','Other'];
+  return `
+    <div class="grid2">
+      <div class="field"><div class="field-label">FIRST NAME *</div><input class="field-input" id="cfFirst" value="${cust?.firstName||''}"></div>
+      <div class="field"><div class="field-label">LAST NAME *</div><input class="field-input" id="cfLast" value="${cust?.lastName||''}"></div>
+    </div>
+    <div class="field"><div class="field-label">DATE OF BIRTH *</div><input class="field-input" type="date" id="cfDob" value="${cust?.dob||''}"></div>
+    <div class="field"><div class="field-label">ADDRESS</div><input class="field-input" id="cfAddress" value="${cust?.address||''}"></div>
+    <div class="grid3">
+      <div class="field"><div class="field-label">CITY</div><input class="field-input" id="cfCity" value="${cust?.city||''}"></div>
+      <div class="field"><div class="field-label">STATE</div><select class="field-input" id="cfState">${states.map(s=>`<option${s===(cust?.state||db.store.state)?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="field"><div class="field-label">ZIP</div><input class="field-input" id="cfZip" value="${cust?.zip||''}"></div>
+    </div>
+    <div class="field"><div class="field-label">PHONE</div><input class="field-input" id="cfPhone" value="${cust?.phone||''}"></div>
+    <div class="grid2">
+      <div class="field"><div class="field-label">ID TYPE *</div><select class="field-input" id="cfIdType">${idTypes.map(t=>`<option${t===(cust?.idType||'')?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><div class="field-label">ID STATE</div><select class="field-input" id="cfIdState">${states.map(s=>`<option${s===(cust?.idState||db.store.state)?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><div class="field-label">ID NUMBER *</div><input class="field-input" id="cfIdNum" value="${cust?.idNumber||''}"></div>
+      <div class="field"><div class="field-label">ID EXPIRY</div><input class="field-input" type="date" id="cfIdExp" value="${cust?.idExpiry||''}"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">ID PHOTO</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="idPhotoPreview" style="width:80px;height:50px;background:var(--bg3);border:1px dashed var(--border2);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);flex-shrink:0">${cust?.idPhoto?`<img src="${cust.idPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:2px">`:'📷 ID'}</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cfIdPhotoInput').click()">📁 UPLOAD ID</button>
+          <button class="btn btn-ghost btn-sm" onclick="captureIdPhoto()">📷 CAMERA</button>
+        </div>
+      </div>
+      <input type="file" id="cfIdPhotoInput" accept="image/*" style="display:none" onchange="handleIdPhoto(event)">
+    </div>
+    <div class="field">
+      <div class="field-label">FLAGS</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--red)"><input type="checkbox" id="cfDnb" ${cust?.doNotBuy?'checked':''}> DO NOT BUY</label>
+    </div>
+    <div class="field"><div class="field-label">NOTES</div><textarea class="field-input" id="cfNotes" rows="2">${cust?.notes||''}</textarea></div>
+    <button class="btn btn-primary" onclick="saveCustomer('${cust?.id||''}')">${cust?'UPDATE CUSTOMER':'ADD CUSTOMER'}</button>
+    <div id="cfError" style="font-size:11px;color:var(--red);margin-top:6px;min-height:16px"></div>`;
+}
+
+function handleIdPhoto(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    pendingIdPhoto=ev.target.result;
+    document.getElementById('idPhotoPreview').innerHTML=`<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:2px">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function captureIdPhoto(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.createElement('video'); video.srcObject=stream; video.play();
+    await new Promise(r=>setTimeout(r,1500));
+    const canvas=document.createElement('canvas'); canvas.width=640; canvas.height=400;
+    canvas.getContext('2d').drawImage(video,0,0,640,400);
+    pendingIdPhoto=canvas.toDataURL('image/jpeg',0.8);
+    stream.getTracks().forEach(t=>t.stop());
+    document.getElementById('idPhotoPreview').innerHTML=`<img src="${pendingIdPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:2px">`;
+  }catch(e){alert('Camera unavailable. Use upload.');}
+}
+
+async function saveCustomer(existingId){
+  const first=document.getElementById('cfFirst').value.trim();
+  const last=document.getElementById('cfLast').value.trim();
+  const idNum=document.getElementById('cfIdNum').value.trim();
+  const err=document.getElementById('cfError');
+  if(!first||!last){err.textContent='First and last name required.';return;}
+  if(!idNum){err.textContent='ID number required.';return;}
+  const cust={
+    id:existingId||genId(),
+    firstName:first, lastName:last,
+    dob:document.getElementById('cfDob').value,
+    address:document.getElementById('cfAddress').value,
+    city:document.getElementById('cfCity').value,
+    state:document.getElementById('cfState').value,
+    zip:document.getElementById('cfZip').value,
+    phone:document.getElementById('cfPhone').value,
+    idType:document.getElementById('cfIdType').value,
+    idState:document.getElementById('cfIdState').value,
+    idNumber:idNum,
+    idExpiry:document.getElementById('cfIdExp').value,
+    idPhoto:pendingIdPhoto||(existingId?db.customers.find(c=>c.id===existingId)?.idPhoto:null),
+    doNotBuy:document.getElementById('cfDnb').checked,
+    notes:document.getElementById('cfNotes').value,
+    createdAt:existingId?db.customers.find(c=>c.id===existingId)?.createdAt:new Date().toISOString(),
+    createdBy:currentEmployee?.id||'admin',
+  };
+  if(existingId){db.customers=db.customers.map(c=>c.id===existingId?cust:c);}
+  else db.customers.push(cust);
+  pendingIdPhoto=null;
+  saveDb();
+  closeModal('customerModal');
+  renderCustomers();
+  if(newCustFromTicket){
+    // Refresh customer dropdown in ticket modal if open
+    const sel=document.getElementById('tfCustomer');
+    if(sel){const opt=document.createElement('option');opt.value=cust.id;opt.selected=true;opt.textContent=`${cust.firstName} ${cust.lastName} — ${cust.idNumber}`;sel.appendChild(opt);}
+  }
+}
+
+function renderCustomers(){
+  const search=document.getElementById('custSearch')?.value.toLowerCase()||'';
+  const list=document.getElementById('customerList');
+  const filtered=db.customers.filter(c=>{
+    if(!search)return true;
+    return (c.firstName+' '+c.lastName+c.idNumber+c.phone).toLowerCase().includes(search);
+  }).sort((a,b)=>a.lastName.localeCompare(b.lastName));
+  if(!filtered.length){list.innerHTML='<div class="empty-state">No customers found.</div>';return;}
+  list.innerHTML=filtered.map(c=>`
+    <div class="customer-row" onclick="viewCustomer('${c.id}')">
+      <div class="customer-avatar">${c.idPhoto?`<img src="${c.idPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:c.firstName[0]+c.lastName[0]}</div>
+      <div style="flex:1">
+        <div class="customer-name">${c.firstName} ${c.lastName}${c.doNotBuy?` <span style="font-size:9px;color:var(--red)">⛔ DNB</span>`:''}</div>
+        <div class="customer-meta">${c.idType||'ID'}: ${c.idNumber||'—'} · ${c.phone||'No phone'}</div>
+        ${c.doNotBuy?`<div class="customer-flag">⛔ DO NOT BUY</div>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--text3)">${db.tickets.filter(t=>t.customerId===c.id).length} tickets</div>
+    </div>`).join('');
+}
+
+function searchCustomers(){renderCustomers();}
+
+function viewCustomer(id){
+  const c=db.customers.find(c=>c.id===id); if(!c)return;
+  const tickets=db.tickets.filter(t=>t.customerId===id);
+  document.getElementById('customerModalTitle').textContent=c.firstName.toUpperCase()+' '+c.lastName.toUpperCase();
+  document.getElementById('customerModalBody').innerHTML=`
+    <div style="display:flex;gap:12px;margin-bottom:14px;align-items:flex-start">
+      <div style="width:70px;height:70px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;flex-shrink:0">${c.idPhoto?`<img src="${c.idPhoto}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
+      <div>
+        ${c.doNotBuy?`<div style="color:var(--red);font-size:11px;font-weight:700;margin-bottom:4px">⛔ DO NOT BUY</div>`:''}
+        <div style="font-size:11px;color:var(--text3);line-height:1.8">
+          DOB: ${c.dob||'—'}<br>
+          ${c.idType}: ${c.idNumber||'—'} (${c.idState||'—'})<br>
+          ${c.address?c.address+', ':''} ${c.city||''} ${c.state||''} ${c.zip||''}<br>
+          ${c.phone||'No phone'}
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
+    <div style="font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px">TRANSACTION HISTORY (${tickets.length})</div>
+    ${tickets.length?tickets.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(t=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span style="color:${TICKET_COLORS[t.type]}">${t.ticketNumber}</span>
+        <span>${TICKET_LABELS[t.type]}</span>
+        <span class="text-gold">${fc(t.totalAmount)}</span>
+        <span class="text-muted">${t.date}</span>
+      </div>`).join(''):'<div style="color:var(--text3);font-size:11px">No transactions yet.</div>'}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="editCustomer('${c.id}')">EDIT</button>
+      <button class="btn btn-green" style="flex:1" onclick="closeModal('customerModal');openNewTicket('B')">NEW TICKET</button>
+    </div>`;
+  document.getElementById('customerModal').classList.add('open');
+}
+
+function editCustomer(id){
+  const c=db.customers.find(c=>c.id===id); if(!c)return;
+  pendingIdPhoto=null;
+  document.getElementById('customerModalTitle').textContent='EDIT CUSTOMER';
+  document.getElementById('customerModalBody').innerHTML=renderCustomerForm(c);
+  document.getElementById('customerModal').classList.add('open');
+}
+
+// ══════════════════════════════════════════
+// INVENTORY
+// ══════════════════════════════════════════
+function renderInventory(){
+  const list=document.getElementById('inventoryList');
+  const holdDays=db.store.holdDays||10;
+  const filtered=db.inventory.filter(i=>{
+    if(invFilter==='all')return i.status!=='sold';
+    if(invFilter==='hold')return i.status==='hold';
+    if(invFilter==='clear')return i.status==='clear';
+    if(invFilter==='sold')return i.status==='sold';
+    return true;
+  }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  // Auto-update hold statuses
+  db.inventory.forEach(i=>{
+    if(i.status==='hold'&&i.holdStart){
+      const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+holdDays);
+      if(new Date()>=clear)i.status='clear';
+    }
+  });
+  if(!filtered.length){list.innerHTML='<div class="empty-state">No inventory items.</div>';return;}
+  list.innerHTML=filtered.map(i=>{
+    let holdBadge='', daysLeft='';
+    if(i.holdStart&&i.status!=='sold'){
+      const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+holdDays);
+      const diff=Math.ceil((clear-new Date())/(1000*60*60*24));
+      if(i.status==='clear'||diff<=0){holdBadge='<span class="badge badge-clear">CLEAR</span>';}
+      else if(diff<=2){holdBadge='<span class="badge badge-soon">'+diff+'d LEFT</span>';}
+      else{holdBadge='<span class="badge badge-hold">HOLD '+diff+'d</span>';}
+      daysLeft=diff>0?`${diff} days remaining`:`Released ${Math.abs(diff)}d ago`;
+    }
+    if(i.status==='sold')holdBadge='<span class="badge badge-sold">SOLD</span>';
+    const cust=db.customers.find(c=>c.id===i.customerId);
+    return `<div class="inv-row">
+      <div style="flex:1">
+        <div class="inv-name">${i.description||i.coinType}</div>
+        <div class="inv-meta">${[i.year,i.mintMark,i.grade].filter(Boolean).join(' · ')} · ${fc(i.meltValue)} melt · Paid: ${fc(i.buyPrice)}</div>
+        ${cust?`<div class="inv-meta">From: ${cust.firstName} ${cust.lastName}</div>`:''}
+        <div style="margin-top:4px">${holdBadge}</div>
+      </div>
+      <div class="inv-right">
+        <div style="font-size:12px;font-weight:700;color:var(--gold)">${fc(i.buyPrice)}</div>
+        <div style="font-size:10px;color:var(--text3)">+${fc(i.meltValue-(i.buyPrice||0))} paper</div>
+        ${i.status!=='sold'?`<button class="btn btn-green btn-sm" style="margin-top:6px" onclick="openNewTicket('S')">SELL</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterInv(f,btn){
+  invFilter=f;
+  document.querySelectorAll('#panel-inventory .btn-sm').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderInventory();
+}
+
+// ══════════════════════════════════════════
+// EVALUATE (AI)
+// ══════════════════════════════════════════
+function loadEvalPhoto(e,side){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    evalPhotos[side]=ev.target.result.split(',')[1];
+    const box=document.getElementById('eval'+side.charAt(0).toUpperCase()+side.slice(1)+'Box');
+    box.innerHTML=`<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:contain">`;
+    document.getElementById('eval'+side.charAt(0).toUpperCase()+side.slice(1)+'Clr').style.display='inline-block';
+    updateEvalReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function startEvalCam(side){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    evalCamStreams[side]=stream;
+    const prefix=side.charAt(0).toUpperCase()+side.slice(1);
+    const box=document.getElementById('eval'+prefix+'Box');
+    const video=document.createElement('video'); video.srcObject=stream; video.play(); video.style.cssText='width:100%;height:100%;object-fit:cover';
+    box.innerHTML=''; box.appendChild(video);
+    const capBtn=document.createElement('button');
+    capBtn.className='btn btn-green'; capBtn.style.cssText='position:absolute;bottom:4px;left:50%;transform:translateX(-50%)';
+    capBtn.textContent='⬤ CAPTURE';
+    capBtn.onclick=()=>{
+      const c=document.createElement('canvas'); c.width=video.videoWidth; c.height=video.videoHeight;
+      c.getContext('2d').drawImage(video,0,0);
+      evalPhotos[side]=c.toDataURL('image/jpeg',0.85).split(',')[1];
+      stream.getTracks().forEach(t=>t.stop());
+      box.style.position=''; box.innerHTML=`<img src="data:image/jpeg;base64,${evalPhotos[side]}" style="width:100%;height:100%;object-fit:contain">`;
+      document.getElementById('eval'+prefix+'Clr').style.display='inline-block';
+      updateEvalReady();
+    };
+    box.style.position='relative'; box.appendChild(capBtn);
+  }catch(e){alert('Camera unavailable.');}
+}
+
+function clearEvalPhoto(side){
+  evalPhotos[side]=null;
+  const prefix=side.charAt(0).toUpperCase()+side.slice(1);
+  document.getElementById('eval'+prefix+'Box').innerHTML=`<div style="font-size:24px">${side==='obv'?'🪙':'🦅'}</div><div style="font-size:9px">${side==='obv'?'FRONT':'BACK'}</div>`;
+  document.getElementById('eval'+prefix+'Clr').style.display='none';
+  updateEvalReady();
+}
+
+function updateEvalReady(){
+  const has=evalPhotos.obv||evalPhotos.rev;
+  const btn=document.getElementById('evalBtn');
+  const msg=document.getElementById('evalReadyMsg');
+  btn.style.display=has?'block':'none';
+  msg.textContent=evalPhotos.obv&&evalPhotos.rev?'✓ Both sides — full analysis':has?'One side captured — add other for best results':'Add at least one photo to evaluate';
+  msg.style.color=evalPhotos.obv&&evalPhotos.rev?'var(--green)':has?'var(--amber)':'var(--text3)';
+}
+
+async function runEvaluation(){
+  const apiKey=localStorage.getItem('dps_api_key')||'';
+  if(!evalPhotos.obv&&!evalPhotos.rev){return;}
+  document.getElementById('evalBtn').style.display='none';
+  document.getElementById('evalLoading').style.display='block';
+  document.getElementById('evalResults').style.display='none';
+  const msgs=['examining coin...','reading date & mint mark...','estimating grade...','checking toning...','assessing authenticity...','calculating values...'];
+  let mi=0; const mt=setInterval(()=>document.getElementById('evalLoadMsg').textContent=msgs[mi++%msgs.length],1800);
+  const sides=[evalPhotos.obv?'obverse':null,evalPhotos.rev?'reverse':null].filter(Boolean).join(' and ');
+  const ctx=document.getElementById('evalContext').value;
+  const prompt=`You are an expert numismatist appraising coins for a pawn shop. Analyze the coin image(s) provided.
+Images: ${sides}. ${ctx?'Context: '+ctx+'.':''} Silver spot: $${spot.toFixed(2)}/oz.
+Respond ONLY with valid JSON no markdown:
+{"coinType":"Walking Liberty Half","series":"Walking Liberty Half Dollar","year":"1942","mintMark":"D","grade":"VF","gradeNotes":"Good Liberty detail","confidence":"high","silverOz":0.3617,"meltValue":${(0.3617*(spot||32)).toFixed(2)},"numisLow":18,"numisHigh":28,"numisNotes":"Common date near melt","toningColors":["Light Gold","Amber"],"toningNotes":"Natural peripheral toning","cleaningDetected":false,"artificialToning":false,"concerns":"","verdict":"natural","buyRec":"buy","buyNotes":"Good buy at 80% melt","flipPotential":"medium","sellVia":"Facebook Marketplace","shopOffer":${(0.3617*(spot||32)*0.8).toFixed(2)},"flags":[]}`;
+  try{
+    const headers={'Content-Type':'application/json'};
+    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';}
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[...(evalPhotos.obv?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:evalPhotos.obv}}]:[]),...(evalPhotos.rev?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:evalPhotos.rev}}]:[]),{type:'text',text:prompt}]}]})});
+    const data=await resp.json();
+    const text=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const r=JSON.parse(text);
+    clearInterval(mt);
+    document.getElementById('evalLoading').style.display='none';
+    const bc=r.buyRec==='buy'?'var(--green)':r.buyRec==='pass'?'var(--red)':'var(--amber)';
+    const vc=r.verdict==='natural'?'var(--green)':r.verdict==='artificial'?'var(--red)':'var(--amber)';
+    const specWeight=COIN_SPECS[r.coinType]?.weight;
+    document.getElementById('evalResults').innerHTML=`
+      <div class="card card.gold" style="border-color:var(--gold2)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">${r.coinType||'Unknown'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">${r.series||''}</div>
+        ${[['DATE/MINT',`${r.year||'?'} ${r.mintMark||''}`,''],[r.grade,`${r.grade} (${r.confidence})`,''],[`${r.silverOz} ozt silver`,`Melt: ${fc(r.meltValue)}`,'']].map(([a,b])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span class="text-muted" style="font-size:10px">${a}</span><span>${b}</span></div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700">
+          <span class="text-muted" style="font-size:10px">BUY CALL</span>
+          <span style="color:${bc};letter-spacing:2px">${(r.buyRec||'').toUpperCase()}</span>
+        </div>
+        ${r.buyNotes?`<div style="font-size:11px;color:var(--text2);padding:6px 8px;background:var(--bg3);border-radius:2px;margin-bottom:8px">${r.buyNotes}</div>`:''}
+        <div class="grid3" style="gap:6px;padding-top:8px;border-top:1px solid var(--border)">
+          <div style="text-align:center"><div style="font-size:8px;color:var(--text3)">MELT</div><div style="font-weight:700;color:var(--green)">${fc(r.meltValue)}</div></div>
+          <div style="text-align:center"><div style="font-size:8px;color:var(--text3)">NUMISMATIC</div><div style="font-weight:700;color:var(--gold)">$${r.numisLow}–$${r.numisHigh}</div></div>
+          <div style="text-align:center"><div style="font-size:8px;color:var(--text3)">SHOP OFFER</div><div style="font-weight:700;color:var(--amber)">${fc(r.shopOffer)}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">AUTHENTICITY</div>
+        ${[['CLEANING',r.cleaningDetected?'⚠ DETECTED':'✓ CLEAR',r.cleaningDetected?'var(--red)':'var(--green)'],['ART. TONING',r.artificialToning?'⚠ SUSPECTED':'✓ CLEAR',r.artificialToning?'var(--red)':'var(--green)']].map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px"><span class="text-muted">${l}</span><span style="color:${c}">${v}</span></div>`).join('')}
+        ${r.toningColors?.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px">${r.toningColors.map(n=>`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#444;color:#fff">${n}</span>`).join('')}</div>`:''}
+        ${r.concerns?`<div style="font-size:11px;color:var(--amber);margin-top:8px;padding:6px;background:var(--amber3);border-radius:2px">⚠ ${r.concerns}</div>`:''}
+        <div style="margin-top:10px;padding:8px;text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;background:${r.verdict==='natural'?'var(--green3)':r.verdict==='artificial'?'var(--red3)':'var(--amber3)'};border:1px solid ${vc};border-radius:2px;color:${vc}">${r.verdict==='natural'?'✓':r.verdict==='artificial'?'✗':'⚠'} ${(r.verdict||'UNKNOWN').toUpperCase()}</div>
+      </div>
+      ${specWeight?`<div class="card"><div class="card-title">⚖ WEIGHT CHECK</div><div style="font-size:11px;color:var(--text2);margin-bottom:10px">Expected: <span class="text-gold">${specWeight}g</span></div><div class="grid2" style="gap:8px"><div><div class="field-label">ACTUAL (g)</div><input class="field-input" type="number" step="0.01" id="evalWeight" placeholder="${specWeight}" oninput="evalWeightCheck('${r.coinType}')"></div><div style="display:flex;flex-direction:column;justify-content:flex-end"><div style="background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px;font-size:14px;font-weight:700;color:var(--gold);text-align:center">${specWeight}g</div></div></div><div id="evalWeightVerdict" style="margin-top:8px"></div></div>`:''}
+      <button class="btn btn-primary" onclick="useEvalForTicket(${JSON.stringify(r).replace(/"/g,'&quot;')})">→ CREATE BUY TICKET</button>
+      <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="clearEvalResults()">EVALUATE ANOTHER</button>`;
+    document.getElementById('evalResults').style.display='block';
+  }catch(e){
+    clearInterval(mt);
+    document.getElementById('evalLoading').style.display='none';
+    document.getElementById('evalBtn').style.display='block';
+    alert('Evaluation failed. Check API key in settings.\n'+e.message);
+  }
+}
+
+function evalWeightCheck(coinType){
+  const spec=COIN_SPECS[coinType];
+  const w=parseFloat(document.getElementById('evalWeight')?.value)||0;
+  const el=document.getElementById('evalWeightVerdict');
+  if(!spec||!w){if(el)el.innerHTML='';return;}
+  const diff=Math.abs(w-spec.weight);
+  let html='';
+  if(diff<=spec.tol*0.5)html=`<div style="padding:8px;background:var(--green3);border:1px solid var(--green2);border-radius:2px;color:var(--green);font-size:11px;font-weight:700">✓ PASS — ${w}g (expected ${spec.weight}g, Δ${(w-spec.weight).toFixed(2)}g)</div>`;
+  else if(diff<=spec.tol)html=`<div style="padding:8px;background:var(--amber3);border:1px solid var(--amber2);border-radius:2px;color:var(--amber);font-size:11px;font-weight:700">~ MARGINAL — ${w}g vs ${spec.weight}g</div>`;
+  else if(w<spec.weight)html=`<div style="padding:8px;background:var(--red3);border:1px solid var(--red2);border-radius:2px;color:var(--red);font-size:11px;font-weight:700">✗ UNDERWEIGHT — ${w}g vs ${spec.weight}g (${diff.toFixed(2)}g light) — SUSPECT</div>`;
+  else html=`<div style="padding:8px;background:var(--red3);border:1px solid var(--red2);border-radius:2px;color:var(--red);font-size:11px;font-weight:700">✗ OVERWEIGHT — ${w}g vs ${spec.weight}g — SUSPECT</div>`;
+  if(el)el.innerHTML=html;
+}
+
+function useEvalForTicket(r){
+  clearEvalResults();
+  openNewTicket('B');
+  setTimeout(()=>{
+    if(document.getElementById('tfDesc'))document.getElementById('tfDesc').value=`${r.year||''} ${r.coinType||''} ${r.mintMark||''} ${r.grade||''}`.trim();
+    if(document.getElementById('tfCoinType'))document.getElementById('tfCoinType').value=r.coinType||'';
+    if(document.getElementById('tfGrade'))document.getElementById('tfGrade').value=r.grade||'VG';
+    if(document.getElementById('tfYear'))document.getElementById('tfYear').value=r.year||'';
+    if(document.getElementById('tfMint'))document.getElementById('tfMint').value=r.mintMark||'';
+    if(document.getElementById('tfAmount'))document.getElementById('tfAmount').value=(r.shopOffer||'').toFixed(2);
+    updateTicketMelt();
+  },300);
+}
+
+function clearEvalResults(){
+  evalPhotos={obv:null,rev:null};
+  ['Obv','Rev'].forEach(s=>{
+    document.getElementById('eval'+s+'Box').innerHTML=`<div style="font-size:24px">${s==='Obv'?'🪙':'🦅'}</div><div style="font-size:9px">${s==='Obv'?'FRONT':'BACK'}</div>`;
+    document.getElementById('eval'+s+'Clr').style.display='none';
+  });
+  document.getElementById('evalResults').style.display='none';
+  document.getElementById('evalBtn').style.display='none';
+  document.getElementById('evalReadyMsg').textContent='Add at least one photo to evaluate';
+  document.getElementById('evalContext').value='';
+}
+
+// ══════════════════════════════════════════
+// EMPLOYEE KPIs
+// ══════════════════════════════════════════
+let kpiPeriod='week';
+function setKpiPeriod(p,btn){
+  kpiPeriod=p;
+  document.querySelectorAll('#panel-employees .btn-sm').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderEmployeeKpis();
+}
+
+function renderEmployeeKpis(){
+  const list=document.getElementById('employeeKpiList');
+  if(!db.employees.length){list.innerHTML='<div class="empty-state">No employees yet.</div>';return;}
+  const now=new Date(); const todayStr=today();
+  const periodStart=(()=>{
+    const d=new Date();
+    if(kpiPeriod==='today')return todayStr;
+    if(kpiPeriod==='week'){d.setDate(d.getDate()-7);}
+    else if(kpiPeriod==='month'){d.setDate(d.getDate()-30);}
+    else return '2000-01-01';
+    return d.toISOString().slice(0,10);
+  })();
+  list.innerHTML=db.employees.filter(e=>e.active).map(emp=>{
+    const empTickets=db.tickets.filter(t=>t.employeeId===emp.id&&t.date>=periodStart);
+    const bought=empTickets.filter(t=>t.type==='B');
+    const sold=empTickets.filter(t=>t.type==='S');
+    const totalBought=bought.reduce((a,t)=>a+(t.totalAmount||0),0);
+    const totalSold=sold.reduce((a,t)=>a+(t.totalAmount||0),0);
+    const totalMargin=sold.reduce((a,t)=>a+(t.margin||0),0);
+    const avgBuyPct=bought.length?bought.reduce((a,t)=>a+(t.meltValue>0?(t.totalAmount/t.meltValue*100):0),0)/bought.length:0;
+    const bestFind=bought.length?bought.reduce((a,t)=>(!a||(t.meltValue-t.totalAmount)>(a.meltValue-a.totalAmount))?t:a,null):null;
+    return `<div class="emp-kpi-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="emp-name-big">${emp.name}</div><span class="badge ${emp.role==='admin'?'badge-admin':'badge-staff'}">${emp.role.toUpperCase()}</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="openResetEmpPin('${emp.id}')">RESET PIN</button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><div class="kpi-label">BOUGHT</div><div class="kpi-val text-green">${bought.length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">SOLD</div><div class="kpi-val text-blue">${sold.length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">MARGIN</div><div class="kpi-val ${totalMargin>=0?'text-green':'text-red'}">${fc(totalMargin)}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">$ BOUGHT</div><div class="kpi-val">${fc(totalBought)}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">$ SOLD</div><div class="kpi-val">${fc(totalSold)}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">AVG BID%</div><div class="kpi-val text-amber">${avgBuyPct.toFixed(0)}%</div></div>
+      </div>
+      ${bestFind?`<div style="font-size:10px;color:var(--text3);margin-top:8px">Best find: <span class="text-gold">${db.inventory.find(i=>(bestFind.inventoryIds||[]).includes(i.id))?.description||'Item'}</span> · +${fc(bestFind.meltValue-bestFind.totalAmount)} paper gain</div>`:''}
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="deactivateEmployee('${emp.id}')" style="color:var(--red);border-color:var(--red2)">DEACTIVATE</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddEmployee(){
+  empPinEntry='';
+  for(let i=0;i<4;i++)document.getElementById('empd'+i).classList.remove('filled');
+  document.getElementById('empName').value='';
+  document.getElementById('empPinError').textContent='';
+  document.getElementById('employeeModal').classList.add('open');
+}
+
+function empPinPress(n){ if(empPinEntry.length>=4)return; empPinEntry+=n; for(let i=0;i<4;i++)document.getElementById('empd'+i).classList.toggle('filled',i<empPinEntry.length); }
+function empPinDel(){ empPinEntry=empPinEntry.slice(0,-1); for(let i=0;i<4;i++)document.getElementById('empd'+i).classList.toggle('filled',i<empPinEntry.length); }
+
+async function saveNewEmployee(){
+  const name=document.getElementById('empName').value.trim();
+  if(!name){document.getElementById('empPinError').textContent='Name required.';return;}
+  if(empPinEntry.length!==4){document.getElementById('empPinError').textContent='Enter 4-digit PIN.';return;}
+  const h=await hashPin(empPinEntry);
+  db.employees.push({id:genId(),name,pinHash:h,role:'staff',active:true,createdAt:new Date().toISOString()});
+  saveDb(); closeModal('employeeModal'); renderEmployeeKpis();
+}
+
+function deactivateEmployee(id){
+  if(!confirm('Deactivate this employee? They will no longer be able to log in.'))return;
+  db.employees=db.employees.map(e=>e.id===id?{...e,active:false}:e);
+  saveDb(); renderEmployeeKpis();
+}
+
+function openResetEmpPin(id){
+  const emp=db.employees.find(e=>e.id===id); if(!emp)return;
+  const newPin=prompt(`Reset PIN for ${emp.name}. Enter new 4-digit PIN:`);
+  if(!newPin||newPin.length!==4||!/^\d{4}$/.test(newPin)){alert('Invalid PIN. Must be exactly 4 digits.');return;}
+  hashPin(newPin).then(h=>{db.employees=db.employees.map(e=>e.id===id?{...e,pinHash:h}:e);saveDb();alert('PIN reset for '+emp.name+'.');});
+}
+
+// ══════════════════════════════════════════
+// COMPLIANCE
+// ══════════════════════════════════════════
+function renderCompliance(){
+  renderAgencyList();
+  renderHoldCompliance();
+  renderReportHistory();
+}
+
+function renderAgencyList(){
+  const el=document.getElementById('agencyList');
+  if(!db.agencies.length){el.innerHTML='<div class="empty-state" style="padding:16px">No agencies added.</div>';return;}
+  el.innerHTML=db.agencies.map(a=>`
+    <div class="agency-row">
+      <div><div style="font-size:12px;font-weight:700">${a.name}</div><div style="font-size:10px;color:var(--text3)">${a.type} · ${a.state} · ${a.reportFrequency}</div>${a.contactName?`<div style="font-size:10px;color:var(--text3)">${a.contactName} · ${a.phone||a.email||''}</div>`:''}</div>
+      <div style="text-align:right"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Last: ${a.lastReported||'Never'}</div>
+      <button class="report-btn" onclick="generatePoliceReport('${a.id}')">REPORT</button></div>
+    </div>`).join('');
+}
+
+function renderHoldCompliance(){
+  const el=document.getElementById('holdComplianceList');
+  const items=db.inventory.filter(i=>i.status==='hold'&&i.holdStart);
+  if(!items.length){el.innerHTML='<div class="empty-state" style="padding:16px">No items in hold.</div>';return;}
+  const holdDays=db.store.holdDays||10;
+  el.innerHTML=items.map(i=>{
+    const clear=new Date(i.holdStart); clear.setDate(clear.getDate()+holdDays);
+    const diff=Math.ceil((clear-new Date())/(1000*60*60*24));
+    const cust=db.customers.find(c=>c.id===i.customerId);
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span>${i.description}</span>
+        <span style="color:${diff<=0?'var(--green)':diff<=2?'var(--amber)':'var(--text3)'}">${diff<=0?'CLEAR':'Hold '+diff+'d'}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3)">Bought ${i.holdStart} · ${cust?cust.firstName+' '+cust.lastName:'No customer'} · ${fc(i.buyPrice)}</div>
+      <div style="font-size:10px;color:var(--text3)">Clears: ${clear.toLocaleDateString()}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderReportHistory(){
+  const el=document.getElementById('reportHistory');
+  if(!db.reports.length){el.innerHTML='<div class="empty-state" style="padding:16px">No reports yet.</div>';return;}
+  el.innerHTML=[...db.reports].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:11px">
+      <div style="display:flex;justify-content:space-between"><span class="text-gold">${r.reportNumber}</span><span class="text-muted">${r.date}</span></div>
+      <div class="text-muted">${r.agency} · ${r.itemCount} items · ${r.generatedBy}</div>
+    </div>`).join('');
+}
+
+function openAddAgency(){ document.getElementById('agencyModal').classList.add('open'); }
+
+function saveAgency(){
+  const name=document.getElementById('agName').value.trim();
+  if(!name){alert('Agency name required.');return;}
+  db.agencies.push({id:genId(),name,type:document.getElementById('agType').value,state:document.getElementById('agState').value.toUpperCase()||db.store.state,contactName:document.getElementById('agContact').value,phone:document.getElementById('agPhone').value,email:document.getElementById('agEmail').value,reportFrequency:document.getElementById('agFreq').value,lastReported:null});
+  saveDb(); closeModal('agencyModal'); renderAgencyList();
+}
+
+function generatePoliceReport(agencyId){
+  const agency=agencyId?db.agencies.find(a=>a.id===agencyId):null;
+  const todayStr=today();
+  const unreported=db.tickets.filter(t=>!t.policeReported&&(t.type==='B'||t.type==='L'));
+  if(!unreported.length){alert('No unreported buy/loan transactions.');return;}
+  const rpt={id:genId(),reportNumber:`DPS-RPT-${todayStr}-${(db.reports.length+1).toString().padStart(3,'0')}`,date:todayStr,agency:agency?.name||'General',itemCount:unreported.length,generatedBy:currentEmployee?.name||'Admin',items:unreported.map(t=>t.id)};
+  db.reports.push(rpt);
+  // Mark as reported
+  unreported.forEach(t=>{t.policeReported=true;t.reportedDate=todayStr;});
+  if(agency)agency.lastReported=todayStr;
+  saveDb();
+  // Show report
+  const store=db.store;
+  document.getElementById('policeReportBody').innerHTML=`
+    <div style="font-size:11px;line-height:2;color:var(--text2)">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">${store.name.toUpperCase()}</div>
+      <div>${store.address}, ${store.city}, ${store.state} ${store.zip}</div>
+      <div>License: ${store.license||'—'} · Phone: ${store.phone||'—'}</div>
+      <div>Report #: <span class="text-gold">${rpt.reportNumber}</span> · Date: ${rpt.date}</div>
+      <div>Submitted to: ${agency?.name||'N/A'}</div>
+      ${agency?.contactName?`<div>Attn: ${agency.contactName}</div>`:''}
+    </div>
+    <hr class="divider">
+    <div style="font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px">TRANSACTION RECORDS (${unreported.length} items)</div>
+    ${unreported.map((t,i)=>{
+      const cust=db.customers.find(c=>c.id===t.customerId);
+      const inv=db.inventory.find(i=>((t.inventoryIds||[]).includes(i.id)));
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <div style="font-weight:700">${i+1}. ${t.ticketNumber} — ${TICKET_LABELS[t.type]}</div>
+        <div class="text-muted">Date: ${t.date} · Amount: ${fc(t.totalAmount)}</div>
+        <div class="text-muted">Item: ${inv?.description||t.notes||'—'}</div>
+        <div class="text-muted">Seller: ${cust?`${cust.firstName} ${cust.lastName} · ${cust.idType}: ${cust.idNumber} · ${cust.address}, ${cust.city}, ${cust.state}`:'Walk-in / No ID'}</div>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn btn-green" onclick="printReport()" style="flex:1">🖨 PRINT</button>
+      <button class="btn btn-ghost" onclick="closeModal('policeReportModal')" style="flex:1">CLOSE</button>
+    </div>`;
+  document.getElementById('policeReportModal').classList.add('open');
+  renderReportHistory();
+}
+
+function printReport(){ window.print(); }
+
+// ══════════════════════════════════════════
+// CUSTOMER MODE
+// ══════════════════════════════════════════
+let customerModeOn=false; let cmRows=[];
+function toggleCustomerMode(){
+  customerModeOn=!customerModeOn;
+  document.getElementById('customerModeOverlay').style.display=customerModeOn?'block':'none';
+  const btn=document.getElementById('custModeBtn');
+  btn.style.borderColor=customerModeOn?'var(--amber)':'var(--border)';
+  btn.style.color=customerModeOn?'var(--amber)':'var(--text3)';
+  if(customerModeOn){
+    document.getElementById('cmShopName').textContent=db.store.name.toUpperCase();
+    updateSpotDisplay();
+    if(!cmRows.length){addCmRow();addCmRow();}
+    renderCmRows();
+  }
+}
+function addCmRow(){ cmRows.push({id:Date.now()+Math.random(),coinType:'Walking Liberty Half',qty:1}); renderCmRows(); }
+function renderCmRows(){
+  const el=document.getElementById('cmCoinRows'); if(!el)return;
+  el.innerHTML=cmRows.map((row,i)=>`
+    <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px">
+      <div>${i===0?'<div style="font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:4px">COIN TYPE</div>':''}
+        <select style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px;font-family:inherit;font-size:12px;outline:none;border-radius:var(--radius)" onchange="updateCmRow(${row.id},'coinType',this.value)">
+          ${COIN_TYPES.map(t=>`<option ${t===row.coinType?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div>${i===0?'<div style="font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:4px">QTY</div>':''}
+        <input type="number" min="1" value="${row.qty}" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px;font-family:inherit;font-size:12px;outline:none;border-radius:var(--radius)" oninput="updateCmRow(${row.id},'qty',this.value)">
+      </div>
+      <button onclick="removeCmRow(${row.id})" style="background:transparent;border:1px solid var(--red2);color:var(--red);padding:6px 8px;font-family:inherit;cursor:pointer;border-radius:2px;${i===0?'margin-top:16px':''}">✕</button>
+    </div>`).join('');
+  calcCm();
+}
+function updateCmRow(id,field,val){ cmRows=cmRows.map(r=>r.id===id?{...r,[field]:field==='qty'?parseInt(val)||1:val}:r); calcCm(); }
+function removeCmRow(id){ cmRows=cmRows.filter(r=>r.id!==id); renderCmRows(); }
+function calcCm(){
+  const sv=metalPrices.silver||spot||32;
+  let total=0; const breakdown=[];
+  cmRows.forEach(row=>{
+    const oz=(COIN_OZ[row.coinType]||0)*row.qty;
+    const melt=oz*sv; total+=melt;
+    if(melt>0)breakdown.push(`${row.qty}× ${row.coinType} = ${fc(melt)}`);
+  });
+  if(total<=0){document.getElementById('cmResult').style.display='none';return;}
+  document.getElementById('cmResult').style.display='block';
+  document.getElementById('cmTotal').textContent=fc(total);
+  document.getElementById('cmOffer').textContent=fc(total*0.8);
+  document.getElementById('cmOnline').textContent=fc(total*0.95);
+  document.getElementById('cmBreakdown').innerHTML=breakdown.map(b=>`<div style="padding:3px 0;border-bottom:1px solid var(--border);color:var(--text3)">${b}</div>`).join('');
+  const adv=total<50?'Small lot — shop offer is quickest.':total<200?'Medium lot — Facebook Marketplace near spot, no fees.':'Larger lot — split key dates to eBay, bulk to dealer.';
+  document.getElementById('cmAdvice').textContent='💡 '+adv;
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function openSettings(){
+  document.getElementById('stShopName').value=db.store.name;
+  document.getElementById('stAddress').value=db.store.address||'';
+  document.getElementById('stCity').value=db.store.city||'';
+  document.getElementById('stState').value=db.store.state||'MI';
+  document.getElementById('stZip').value=db.store.zip||'';
+  document.getElementById('stPhone').value=db.store.phone||'';
+  document.getElementById('stLicense').value=db.store.license||'';
+  document.getElementById('stHoldDays').value=db.store.holdDays||10;
+  document.getElementById('stApiKey').value=localStorage.getItem('dps_api_key')||'';
+  document.getElementById('stApiKey').type='password';
+  stPinEntry=''; stPinStage='current'; stPinNew='';
+  for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');
+  document.getElementById('stPinStep').textContent='CURRENT ADMIN PIN';
+  document.getElementById('stPinError').textContent='';
+  document.getElementById('settingsPanel').style.display='block';
+}
+function closeSettings(){ document.getElementById('settingsPanel').style.display='none'; }
+
+function saveShopSettings(){
+  db.store.name=document.getElementById('stShopName').value.trim()||db.store.name;
+  db.store.address=document.getElementById('stAddress').value;
+  db.store.city=document.getElementById('stCity').value;
+  db.store.state=document.getElementById('stState').value.toUpperCase();
+  db.store.zip=document.getElementById('stZip').value;
+  db.store.phone=document.getElementById('stPhone').value;
+  db.store.license=document.getElementById('stLicense').value;
+  db.store.holdDays=parseInt(document.getElementById('stHoldDays').value)||10;
+  document.getElementById('headerShopName').textContent=db.store.name.toUpperCase();
+  document.getElementById('lockShopName').textContent=db.store.name.toUpperCase();
+  saveDb(); alert('✓ Shop settings saved.');
+}
+
+function saveApiKeySetting(){
+  const k=document.getElementById('stApiKey').value.trim();
+  const m=document.getElementById('stApiMsg');
+  if(k&&!k.startsWith('sk-ant-')){m.style.color='var(--red)';m.textContent='Invalid key format.';return;}
+  if(k)localStorage.setItem('dps_api_key',k);
+  m.style.color='var(--green)'; m.textContent='✓ Saved'; setTimeout(()=>m.textContent='',3000);
+}
+
+// Settings PIN change
+function stPinPress(n){ if(stPinEntry.length>=4)return; stPinEntry+=n; for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.toggle('filled',i<stPinEntry.length); if(stPinEntry.length===4)setTimeout(processStPin,150); }
+function stPinDel(){ stPinEntry=stPinEntry.slice(0,-1); for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.toggle('filled',i<stPinEntry.length); }
+
+async function processStPin(){
+  const adminHash=localStorage.getItem('dps_admin_hash')||'';
+  const err=document.getElementById('stPinError');
+  const step=document.getElementById('stPinStep');
+  if(stPinStage==='current'){
+    const h=await hashPin(stPinEntry);
+    if(h===adminHash){stPinStage='new';stPinEntry='';for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');step.textContent='ENTER NEW ADMIN PIN';err.textContent='';}
+    else{err.textContent='Incorrect PIN';stPinEntry='';for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');}
+  }else if(stPinStage==='new'){
+    stPinNew=stPinEntry;stPinStage='confirm';stPinEntry='';for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');step.textContent='CONFIRM NEW PIN';err.textContent='';
+  }else{
+    if(stPinEntry===stPinNew){const h=await hashPin(stPinEntry);localStorage.setItem('dps_admin_hash',h);stPinStage='current';stPinEntry='';stPinNew='';for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');step.textContent='CURRENT ADMIN PIN';err.style.color='var(--green)';err.textContent='✓ PIN updated';setTimeout(()=>{err.textContent='';err.style.color='var(--red)';},3000);}
+    else{err.textContent='PINs do not match';stPinStage='new';stPinEntry='';stPinNew='';for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');step.textContent='ENTER NEW PIN';}
+  }
+}
+
+function exportAllData(){
+  const data={db,exportDate:new Date().toISOString(),version:'1.0'};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`dps-export-${today()}.json`;a.click();URL.revokeObjectURL(url);
+}
+
+function confirmFactoryReset(){
+  if(confirm('FACTORY RESET?\n\nThis will delete ALL data including customers, tickets, inventory, and settings. This cannot be undone.\n\nType RESET to confirm.')){
+    const confirm2=prompt('Type RESET to confirm:');
+    if(confirm2==='RESET'){localStorage.clear();location.reload();}
+  }
+}
+
+// ══════════════════════════════════════════
+// NEWS
+// ══════════════════════════════════════════
+async function fetchNews(){
+  const apiKey=localStorage.getItem('dps_api_key')||'';
+  document.getElementById('newsFeed').innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px">Fetching...</div>';
+  const prompt=`Search for latest silver and gold precious metals news today or this week. Return JSON only: {"headlines":[{"title":"headline","source":"Kitco","time":"2h ago","summary":"one sentence","signal":"bullish"}]} signal: bullish/bearish/neutral. 6-8 headlines.`;
+  try{
+    const headers={'Content-Type':'application/json'};
+    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';}
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();
+    const text=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const r=JSON.parse(text);
+    document.getElementById('newsFeed').innerHTML=(r.headlines||[]).map(h=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--text);margin-bottom:2px">${h.title}</div><div style="font-size:10px;color:var(--text3)">${h.summary||''}</div><div style="font-size:9px;color:var(--text3);margin-top:2px">${h.source} · ${h.time} · <span style="color:${h.signal==='bullish'?'var(--green)':h.signal==='bearish'?'var(--red)':'var(--amber)'}">${h.signal==='bullish'?'▲':h.signal==='bearish'?'▼':'→'} ${(h.signal||'').toUpperCase()}</span></div></div>`).join('');
+  }catch(e){document.getElementById('newsFeed').innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px">News unavailable. Add API key in settings.</div>';}
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>
