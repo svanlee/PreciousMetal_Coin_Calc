@@ -1,5 +1,5 @@
 # PreciousMetal_Coin_Calc
-Precious metals &amp; coin intelligence tool — live spot prices, silver coin appraisal, flip tracker, customer offer calculator, and Claude-powered coin scanning. Built for pawn shop 
+
 ASSAY — Silver Coin Intelligence
 A mobile-first progressive web app for precious metals and coin evaluation at the point of sale.
 Features:
@@ -14,3 +14,6 @@ Features:
 	•	Customer-facing mode with clean coin value estimator
 	•	PIN-protected with auto-lock
 Built with vanilla HTML/JS. No framework dependencies. Runs fully offline except live price feeds and AI scanning.
+
+
+Precious metals &amp; coin intelligence tool — live spot prices, silver coin appraisal, flip tracker, customer offer calculator, and Claude-powered coin scanning. Built for pawn shop 
