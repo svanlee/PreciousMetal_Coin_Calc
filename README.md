@@ -15,9 +15,21 @@ calculate_premium(price_per_oz=3348, spot_price=3365)     # -> -17
 
 Modules: `conversions` (g/troy oz/dwt), `purity` (named fineness constants),
 `weights` (mint weight/tolerance specs + counterfeit weight-check),
-`coins` (reference table of pure metal content by coin/bullion type),
-`melt` (melt value calculators), `premium` (offer tiers, lot-size advice,
+`coins` (reference table of pure metal content by coin/bullion type --
+US junk silver, 40%-silver special strikes, silver/gold/platinum/palladium
+bullion, pre-1933 US gold denominations, and common world bullion),
+`key_dates` (numismatically significant dates/varieties per series -- a
+"don't melt this one, check it first" flag, not a pricing guide), `melt`
+(melt value calculators), `premium` (offer tiers, lot-size advice,
 gold/silver ratio buy signal).
+
+```python
+from preciousmetal_coin_calc import lookup_key_date
+
+lookup_key_date("mercury_dime", "1916", "D")
+# KeyDate(coin_key='mercury_dime', year='1916', mint_mark='D',
+#         label='1916-D Mercury Dime', why='The key date of the series...', tier='key')
+```
 
 Install for development: `pip install -e ".[dev]"` then `pytest`.
 

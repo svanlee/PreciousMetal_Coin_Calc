@@ -55,4 +55,23 @@ COIN_REFERENCE: dict[str, CoinRef] = {
     # Platinum / palladium
     "american_platinum_eagle": CoinRef("American Platinum Eagle 1oz", 1.000, p.BULLION_9995, "platinum"),
     "canadian_palladium_maple_leaf": CoinRef("Canadian Palladium Maple Leaf 1oz", 1.000, p.BULLION_9995, "palladium"),
+    # Trade dollar / early US commemorative silver
+    "trade_dollar": CoinRef("Trade Dollar (1873-1885)", 0.7877, p.FINE_900, "silver"),
+    # 40%-silver special-strike issues (not general circulation)
+    "eisenhower_dollar_40pct": CoinRef("Eisenhower Dollar (1971-1976, 40% silver \"Blue Ike\")", 0.3163, p.CLAD_40, "silver"),
+    "bicentennial_quarter_40pct": CoinRef("Bicentennial Quarter (1976, 40% silver)", 0.0740, p.CLAD_40, "silver"),
+    "bicentennial_half_40pct": CoinRef("Bicentennial Half Dollar (1976, 40% silver)", 0.1479, p.CLAD_40, "silver"),
+    "bicentennial_dollar_40pct": CoinRef("Bicentennial Eisenhower Dollar (1976, 40% silver)", 0.3163, p.CLAD_40, "silver"),
+    # Pre-1933 US gold coinage (.900 fine)
+    "gold_double_eagle": CoinRef("Gold Double Eagle ($20, Liberty/Saint-Gaudens)", 0.9675, p.FINE_900, "gold"),
+    "gold_eagle_10": CoinRef("Gold Eagle ($10, pre-1933)", 0.4837, p.FINE_900, "gold"),
+    "gold_half_eagle_5": CoinRef("Gold Half Eagle ($5, pre-1933)", 0.2419, p.FINE_900, "gold"),
+    "gold_quarter_eagle_2_5": CoinRef("Gold Quarter Eagle ($2.50, pre-1933)", 0.1209, p.FINE_900, "gold"),
+    "gold_dollar_1": CoinRef("Gold Dollar ($1, Type 1/2/3)", 0.0484, p.FINE_900, "gold"),
+    # World bullion
+    "british_sovereign": CoinRef("British Sovereign", 0.2354, p.KRUGERRAND_GOLD, "gold"),
+    "austrian_philharmonic_gold": CoinRef("Austrian Gold Philharmonic 1oz", 1.000, p.BULLION_9999, "gold"),
+    "austrian_philharmonic_silver": CoinRef("Austrian Silver Philharmonic 1oz", 1.000, p.BULLION_999, "silver"),
+    "chinese_gold_panda_1oz": CoinRef("Chinese Gold Panda 1oz", 1.000, p.BULLION_999, "gold"),
+    "mexican_silver_libertad": CoinRef("Mexican Silver Libertad 1oz", 1.000, p.BULLION_999, "silver"),
 }

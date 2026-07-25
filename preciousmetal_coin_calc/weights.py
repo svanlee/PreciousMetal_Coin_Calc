@@ -43,6 +43,21 @@ COIN_SPECS: dict[str, CoinSpec] = {
     "canadian_maple_leaf_gold": CoinSpec(31.10, 0.10, 30.0),
     "american_platinum_eagle": CoinSpec(31.12, 0.10, 32.7),
     "canadian_palladium_maple_leaf": CoinSpec(31.10, 0.10, 30.0),
+    "trade_dollar": CoinSpec(27.22, 0.30, 38.1),
+    "eisenhower_dollar_40pct": CoinSpec(24.59, 0.25, 38.1),
+    "bicentennial_quarter_40pct": CoinSpec(5.75, 0.15, 24.3),
+    "bicentennial_half_40pct": CoinSpec(11.50, 0.20, 30.6),
+    "bicentennial_dollar_40pct": CoinSpec(24.59, 0.25, 38.1),
+    "gold_double_eagle": CoinSpec(33.436, 0.25, 34.0),
+    "gold_eagle_10": CoinSpec(16.718, 0.20, 27.0),
+    "gold_half_eagle_5": CoinSpec(8.359, 0.15, 21.6),
+    "gold_quarter_eagle_2_5": CoinSpec(4.18, 0.10, 18.0),
+    "gold_dollar_1": CoinSpec(1.672, 0.05, 13.0),
+    "british_sovereign": CoinSpec(7.988, 0.10, 22.05),
+    "austrian_philharmonic_gold": CoinSpec(31.14, 0.10, 37.0),
+    "austrian_philharmonic_silver": CoinSpec(31.10, 0.15, 37.0),
+    "chinese_gold_panda_1oz": CoinSpec(31.10, 0.15, 40.0),
+    "mexican_silver_libertad": CoinSpec(31.10, 0.15, 40.0),
 }
 
 PASS = "PASS"
