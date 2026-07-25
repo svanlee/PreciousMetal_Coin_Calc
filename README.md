@@ -1,3 +1,28 @@
+# PreciousMetal_Coin_Calc
+
+Reusable Python library for precious metals valuation: melt value, purity,
+weight conversions, and premium/offer-tier math. Extracted and reconciled
+from the calculation logic in `pawnshop.html` (below) and the Stacktrack app,
+with gaps filled in (gold/platinum/palladium coin reference data, explicit
+fineness values, corrected coin content figures).
+
+```python
+from preciousmetal_coin_calc import melt_for_coin, calculate_premium
+
+melt_for_coin("morgan_dollar", qty=1, spot_price=32.00)  # -> 24.752
+calculate_premium(price_per_oz=3348, spot_price=3365)     # -> -17
+```
+
+Modules: `conversions` (g/troy oz/dwt), `purity` (named fineness constants),
+`weights` (mint weight/tolerance specs + counterfeit weight-check),
+`coins` (reference table of pure metal content by coin/bullion type),
+`melt` (melt value calculators), `premium` (offer tiers, lot-size advice,
+gold/silver ratio buy signal).
+
+Install for development: `pip install -e ".[dev]"` then `pytest`.
+
+---
+
 # 🏪 Downtown Pawnshop POS
 ### Precious Metals & Coin Point-of-Sale System
 

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "preciousmetal-coin-calc"
+version = "0.1.0"
+description = "Reusable precious metals valuation library: melt value, premiums, purity, weight conversions."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Scott Van Leeuwen" }]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["preciousmetal_coin_calc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
