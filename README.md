@@ -41,7 +41,7 @@ Install for development: `pip install -e ".[dev]"` then `pytest`.
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-1.0.0-gold?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-green?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Web-blue?style=for-the-badge)
 ![Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen?style=for-the-badge)
 
@@ -371,9 +371,11 @@ No build process. No npm. No webpack. One file, open in browser, done.
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE)
+PolyForm Noncommercial License 1.0.0 — see [LICENSE](LICENSE)
 
-Free to use, modify, and deploy. Attribution appreciated but not required.
+Free for noncommercial/personal use. Commercial use (resale, hosting as a
+paid service, bundling into a commercial product) requires a separate
+license from the copyright holder.
 
 ---
 

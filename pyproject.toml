@@ -7,7 +7,7 @@ name = "preciousmetal-coin-calc"
 version = "0.1.0"
 description = "Reusable precious metals valuation library: melt value, premiums, purity, weight conversions."
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "PolyForm-Noncommercial-1.0.0" }
 requires-python = ">=3.10"
 authors = [{ name = "Scott Van Leeuwen" }]
 
