@@ -2038,10 +2038,17 @@ function coinSlug(r){
   let s=(r.coinType||r.series||'coin').trim().replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
   return s||'coin';
 }
-// Base filename: <coinYear>_<StandardizedName>_<scanDate>
+// Mint-mark code for filenames; blank for Philadelphia / no mint mark
+function mintSlug(m){
+  m=(m||'').toString().trim().toLowerCase();
+  if(!m||m==='—'||m==='-'||m.includes('none')||m.includes('phil'))return '';
+  const t=m.match(/cc|[dspow]/); return t?t[0].toUpperCase():m.replace(/[^a-z0-9]/gi,'').toUpperCase();
+}
+// Base filename: <coinYear>[-<Mint>]_<StandardizedName>_<scanDate>
 function coinBasename(r){
   const yr=String(r.year||'').replace(/[^0-9]/g,'')||'unknown';
-  return yr+'_'+coinSlug(r)+'_'+today();
+  const mint=mintSlug(r.mintMark);
+  return yr+(mint?'-'+mint:'')+'_'+coinSlug(r)+'_'+today();
 }
 // Ensure the .json name is unique in coins/ ; append _2, _3… on collision
 async function uniqueBasename(repo,base){
