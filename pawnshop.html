@@ -2033,14 +2033,24 @@ async function ghGetFile(repo,path){
 }
 
 // Next record id like 2026-0002 by scanning coins/
-async function nextRepoRecordId(repo){
-  let max=0;
+// Standardized coin name for filenames, e.g. "Standing Liberty Quarter" -> "Standing_Liberty_Quarter"
+function coinSlug(r){
+  let s=(r.coinType||r.series||'coin').trim().replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return s||'coin';
+}
+// Base filename: <coinYear>_<StandardizedName>_<scanDate>
+function coinBasename(r){
+  const yr=String(r.year||'').replace(/[^0-9]/g,'')||'unknown';
+  return yr+'_'+coinSlug(r)+'_'+today();
+}
+// Ensure the .json name is unique in coins/ ; append _2, _3… on collision
+async function uniqueBasename(repo,base){
   const resp=await ghFetch('/repos/'+repo+'/contents/coins?ref='+GH_BRANCH);
-  if(resp.ok){
-    const list=await resp.json();
-    (list||[]).forEach(f=>{const mm=/^\d{4}-(\d{4})\.md$/.exec(f.name||'');if(mm)max=Math.max(max,parseInt(mm[1]));});
-  }
-  return new Date().getFullYear()+'-'+String(max+1).padStart(4,'0');
+  let names=[];
+  if(resp.ok){ const list=await resp.json(); names=(list||[]).map(f=>f.name||''); }
+  if(!names.includes(base+'.json'))return base;
+  let i=2; while(names.includes(base+'_'+i+'.json'))i++;
+  return base+'_'+i;
 }
 
 // Commit multiple files atomically via the Git Data API.
@@ -2070,43 +2080,51 @@ async function ghCommitFiles(repo,files,message){
 
 function mdCell(v){return String(v==null?'':v).replace(/\|/g,'/').replace(/\n/g,' ');}
 
-function buildCoinRecordMd(id,r,weight,price){
+function buildCoinRecordJson(base,r,weight,price){
   const spec=COIN_SPECS[r.coinType];
-  let wVerdict='—';
+  let wVerdict=null;
   if(weight&&spec){
     const diff=Math.abs(weight-spec.weight);
     if(diff<=spec.tol*0.5)wVerdict='PASS — '+weight+'g vs '+spec.weight+'g (Δ'+(weight-spec.weight).toFixed(2)+'g)';
     else if(diff<=spec.tol)wVerdict='MARGINAL — '+weight+'g vs '+spec.weight+'g';
     else wVerdict=(weight<spec.weight?'UNDERWEIGHT':'OVERWEIGHT')+' — '+weight+'g vs '+spec.weight+'g — SUSPECT';
   }
-  const rows=[
-    ['Record ID',id],
-    ['Date scanned',today()],
-    ['Coin type / series',(r.coinType||'')+(r.series?' ('+r.series+')':'')],
-    ['Date / year',r.year||'?'],
-    ['Mint mark',r.mintMark||'none'],
-    ['Grade (ANA)',(r.grade||'')+(r.confidence?' ('+r.confidence+' confidence)':'')],
-    ['Silver content',(r.silverOz!=null?r.silverOz+' ozt':'—')],
-    ['Weight (measured)',weight?weight+' g':'—'],
-    ['Weight verdict',wVerdict],
-    ['Melt value',r.meltValue!=null?fc(r.meltValue):'—'],
-    ['Numismatic value (low–high)','$'+(r.numisLow||0)+' – $'+(r.numisHigh||0)],
-    ['Patina / toning',((r.toningColors||[]).join(', ')||'—')+(r.toningNotes?' — '+r.toningNotes:'')],
-    ['Authenticity',(r.cleaningDetected?'Cleaning detected. ':'')+(r.artificialToning?'Artificial toning suspected. ':'')+(r.concerns||'')+' Verdict: '+(r.verdict||'unknown')],
-    ['Recommendation',(r.buyRec||'').toUpperCase()],
-    ['Reasoning',r.buyNotes||r.numisNotes||''],
-    ['Shop offer',r.shopOffer!=null?fc(r.shopOffer):'—'],
-    ['Price paid',price?fc(price):'—'],
-    ['Silver spot @ scan','$'+(spot||0).toFixed(2)+'/oz']
-  ];
-  let md='# Coin Record — '+id+'\n\n| Field | Value |\n|-------|-------|\n';
-  rows.forEach(([k,v])=>{md+='| **'+k+'** | '+mdCell(v)+' |\n';});
-  md+='\n## Images\n- Obverse: `../images/'+id+'-obverse.jpg`'+(evalPhotos.obv?'':' *(not captured)*')+'\n- Reverse: `../images/'+id+'-reverse.jpg`'+(evalPhotos.rev?'':' *(not captured)*')+'\n';
-  return md;
+  const rec={
+    file:base+'.json',
+    dateScanned:today(),
+    coinType:r.coinType||null,
+    series:r.series||null,
+    year:r.year||null,
+    mintMark:r.mintMark||null,
+    grade:r.grade||null,
+    gradeConfidence:r.confidence||null,
+    silverOz:(r.silverOz!=null?r.silverOz:null),
+    weightMeasuredG:(weight||null),
+    weightVerdict:wVerdict,
+    meltValue:(r.meltValue!=null?r.meltValue:null),
+    numismaticLow:(r.numisLow!=null?r.numisLow:null),
+    numismaticHigh:(r.numisHigh!=null?r.numisHigh:null),
+    toningColors:r.toningColors||[],
+    toningNotes:r.toningNotes||null,
+    cleaningDetected:!!r.cleaningDetected,
+    artificialToning:!!r.artificialToning,
+    concerns:r.concerns||null,
+    verdict:r.verdict||null,
+    recommendation:((r.buyRec||'').toUpperCase()||null),
+    reasoning:r.buyNotes||r.numisNotes||null,
+    shopOffer:(r.shopOffer!=null?r.shopOffer:null),
+    pricePaid:(price||null),
+    silverSpotAtScan:(spot||null),
+    images:{
+      obverse:evalPhotos.obv?('images/'+base+'-obverse.jpg'):null,
+      reverse:evalPhotos.rev?('images/'+base+'-reverse.jpg'):null
+    }
+  };
+  return JSON.stringify(rec,null,2)+'\n';
 }
 
-function catalogRow(id,r,price){
-  return '| '+id+' | '+today()+' | '+mdCell(r.coinType||'')+' | '+mdCell(r.year||'')+' | '+mdCell(r.mintMark||'—')+' | '+mdCell(r.grade||'')+' | '+(r.meltValue!=null?fc(r.meltValue):'—')+' | $'+(r.numisLow||0)+'–$'+(r.numisHigh||0)+' | '+(price?fc(price):'—')+' | '+mdCell((r.buyRec||'').toUpperCase())+' | ['+id+'](coins/'+id+'.md) |';
+function catalogRow(base,r,price){
+  return '| '+base+' | '+today()+' | '+mdCell(r.coinType||'')+' | '+mdCell(r.year||'')+' | '+mdCell(r.mintMark||'—')+' | '+mdCell(r.grade||'')+' | '+(r.meltValue!=null?fc(r.meltValue):'—')+' | $'+(r.numisLow||0)+'–$'+(r.numisHigh||0)+' | '+(price?fc(price):'—')+' | '+mdCell((r.buyRec||'').toUpperCase())+' | ['+base+'](coins/'+base+'.json) |';
 }
 
 function insertCatalogRow(catalogText,row){
@@ -2129,14 +2147,14 @@ async function saveCoinToRepo(r){
     const weight=parseFloat(document.getElementById('evalWeight')?.value)||0;
     const priceStr=prompt('Price paid for this coin? (leave blank to skip)');
     const price=priceStr?parseFloat(priceStr)||0:0;
-    const id=await nextRepoRecordId(repo);
-    const files=[{path:'coins/'+id+'.md',content:buildCoinRecordMd(id,r,weight,price),encoding:'utf-8'}];
-    if(evalPhotos.obv)files.push({path:'images/'+id+'-obverse.jpg',content:evalPhotos.obv,encoding:'base64'});
-    if(evalPhotos.rev)files.push({path:'images/'+id+'-reverse.jpg',content:evalPhotos.rev,encoding:'base64'});
+    const base=await uniqueBasename(repo,coinBasename(r));
+    const files=[{path:'coins/'+base+'.json',content:buildCoinRecordJson(base,r,weight,price),encoding:'utf-8'}];
+    if(evalPhotos.obv)files.push({path:'images/'+base+'-obverse.jpg',content:evalPhotos.obv,encoding:'base64'});
+    if(evalPhotos.rev)files.push({path:'images/'+base+'-reverse.jpg',content:evalPhotos.rev,encoding:'base64'});
     const cat=await ghGetFile(repo,'catalog.md');
-    files.push({path:'catalog.md',content:insertCatalogRow(cat?cat.text:'',catalogRow(id,r,price)),encoding:'utf-8'});
-    await ghCommitFiles(repo,files,'Add coin '+id+': '+(r.year||'')+' '+(r.coinType||'coin'));
-    if(msg){msg.style.color='var(--green)';msg.textContent='✓ Saved as '+id+' → '+repo;}
+    files.push({path:'catalog.md',content:insertCatalogRow(cat?cat.text:'',catalogRow(base,r,price)),encoding:'utf-8'});
+    await ghCommitFiles(repo,files,'Add coin '+base);
+    if(msg){msg.style.color='var(--green)';msg.textContent='✓ Saved as '+base+'.json → '+repo;}
   }catch(e){
     if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+e.message;}
     else alert('Save failed: '+e.message);
@@ -2315,7 +2333,7 @@ async function checkKeyDateCollection(){
     if(cat&&cat.text){
       cat.text.split('\n').forEach(line=>{
         const cells=line.split('|').map(s=>s.trim());
-        if(cells.length>6 && /^\d{4}-\d{4}$/.test(cells[1])) kdOwned.push({coin:cells[3],year:cells[4],mint:cells[5]});
+        if(cells.length>6 && /^\d{4}$/.test(cells[4]) && cells[3] && cells[3]!=='Coin') kdOwned.push({coin:cells[3],year:cells[4],mint:cells[5]});
       });
     }
     renderKeyDates();
