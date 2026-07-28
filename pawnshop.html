@@ -1562,7 +1562,7 @@ Respond ONLY with valid JSON no markdown:
 {"coinType":"Walking Liberty Half","series":"Walking Liberty Half Dollar","year":"1942","mintMark":"D","grade":"VF","gradeNotes":"Good Liberty detail","confidence":"high","silverOz":0.3617,"meltValue":${(0.3617*(spot||32)).toFixed(2)},"numisLow":18,"numisHigh":28,"numisNotes":"Common date near melt","toningColors":["Light Gold","Amber"],"toningNotes":"Natural peripheral toning","cleaningDetected":false,"artificialToning":false,"concerns":"","verdict":"natural","buyRec":"buy","buyNotes":"Good buy at 80% melt","flipPotential":"medium","sellVia":"Facebook Marketplace","shopOffer":${(0.3617*(spot||32)*0.8).toFixed(2)},"flags":[]}`;
   try{
     const headers={'Content-Type':'application/json'};
-    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';}
+    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';headers['anthropic-dangerous-direct-browser-access']='true';}
     const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[...(evalPhotos.obv?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:evalPhotos.obv}}]:[]),...(evalPhotos.rev?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:evalPhotos.rev}}]:[]),{type:'text',text:prompt}]}]})});
     const data=await resp.json();
     const text=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
@@ -2164,7 +2164,7 @@ async function fetchNews(){
   const prompt=`Search for latest silver and gold precious metals news today or this week. Return JSON only: {"headlines":[{"title":"headline","source":"Kitco","time":"2h ago","summary":"one sentence","signal":"bullish"}]} signal: bullish/bearish/neutral. 6-8 headlines.`;
   try{
     const headers={'Content-Type':'application/json'};
-    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';}
+    if(apiKey){headers['x-api-key']=apiKey;headers['anthropic-version']='2023-06-01';headers['anthropic-dangerous-direct-browser-access']='true';}
     const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})});
     const data=await resp.json();
     const text=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
