@@ -101,6 +101,22 @@ Powered by Claude Sonnet AI vision:
 
 ---
 
+### 💾 Private Records Repo (auto-save scans)
+
+Optionally back every coin scan up to a **private GitHub repository** — photos and all.
+
+- Configure once in **Settings → Private Records Repo**: your repo (`owner/name`) and a **fine-grained token** (scoped to *only* that repo, Contents: Read & write). A **TEST** button verifies the connection and warns if the token can't write or the repo is public.
+- After any evaluation, tap **💾 SAVE TO RECORDS REPO** to commit, in one atomic commit:
+  - `images/<id>-obverse.jpg` and `-reverse.jpg` — the actual coin photos
+  - `coins/<id>.md` — the full evaluation record
+  - a new row in `catalog.md` (master index, newest first)
+- Record IDs auto-increment (`2026-0002`, `2026-0003`, …) by reading the repo.
+- Solves the localStorage-only limitation: your scans become durable, version-tracked, and off-device.
+
+> 🔒 **Token safety:** the token is stored in device `localStorage` (like the API key). Scope it to **only** the records repo so a leak can't reach anything else. **Do not** save a real token in a build hosted on public GitHub Pages — use auto-save only on your own device.
+
+---
+
 ### 🚔 Law Enforcement Compliance
 
 Built for US pawn shops operating under state secondhand dealer regulations:
@@ -258,6 +274,7 @@ All other features (tickets, customers, inventory, hold tracking, compliance) wo
 |---------|---------------|
 | PIN storage | SHA-256 hashed with salt — never stored plaintext |
 | API key storage | Device localStorage only — never transmitted except to Anthropic |
+| GitHub token (records repo) | Device localStorage only — sent only to api.github.com. Scope to a single repo, Contents: write. Never ship in a public Pages build. |
 | Customer data | localStorage on device — never leaves the browser |
 | ID photos | Base64 encoded, stored locally |
 | Admin PIN | Separate from employee PINs, required for settings changes |
