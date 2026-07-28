@@ -414,6 +414,7 @@ button{cursor:pointer;}
     <button class="tab" onclick="showTab('inventory')">📦 INVENTORY</button>
     <button class="tab" onclick="showTab('evaluate')">🔬 EVALUATE</button>
     <button class="tab" onclick="showTab('market')">📈 MARKET</button>
+    <button class="tab" onclick="showTab('key')">🔑 KEY DATES</button>
     <button class="tab admin-only" onclick="showTab('employees')" style="display:none">👥 EMPLOYEES</button>
     <button class="tab admin-only" onclick="showTab('compliance')" style="display:none">🚔 COMPLIANCE</button>
   </div>
@@ -578,6 +579,22 @@ button{cursor:pointer;}
       </div>
       <div id="newsFeed"><div class="empty-state" style="padding:16px">Tap FETCH for latest news</div></div>
     </div>
+  </div>
+
+  <!-- ── KEY DATES ── -->
+  <div class="panel" id="panel-key">
+    <div class="card">
+      <div class="card-title">🔑 KEY DATES & MISSING COINS</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">The valuable dates & mint marks to watch for — so you never sell one as junk silver. Tap <b>CHECK MY COLLECTION</b> to mark which you already own (from your records repo) and highlight the ones you're still missing.</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-green" onclick="checkKeyDateCollection()" style="flex:1">🔄 CHECK MY COLLECTION</button>
+        <button class="btn btn-ghost" onclick="kdShowMissingOnly=!kdShowMissingOnly;renderKeyDates()" id="kdMissingBtn" style="flex:1">🔍 MISSING ONLY</button>
+      </div>
+      <input class="field-input" id="kdSearch" placeholder="Search coin, year, mint…" oninput="renderKeyDates()" style="margin-bottom:6px">
+      <div id="kdMsg" style="font-size:11px;min-height:16px"></div>
+    </div>
+    <div id="kdList"></div>
+    <div style="font-size:9px;color:var(--text3);text-align:center;margin:10px 0 20px">Values are rough retail estimates — always verify against a current price guide. Not every variety is listed.</div>
   </div>
 
   <!-- ── EMPLOYEES (admin) ── -->
@@ -951,6 +968,7 @@ function showTab(name){
   if(name==='employees')renderEmployeeKpis();
   if(name==='compliance')renderCompliance();
   if(name==='market')fetchSpotPrices();
+  if(name==='key'){ if(kdOwned===null && localStorage.getItem('dps_gh_token')) checkKeyDateCollection(); else renderKeyDates(); }
 }
 
 // ══════════════════════════════════════════
@@ -2123,6 +2141,185 @@ async function saveCoinToRepo(r){
     if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+e.message;}
     else alert('Save failed: '+e.message);
   }finally{ if(btn)btn.disabled=false; }
+}
+
+// ══════════════════════════════════════════
+// KEY DATES & MISSING COINS
+// ══════════════════════════════════════════
+let kdOwned=null;            // [{coin,year,mint}] from records repo, or null until checked
+let kdShowMissingOnly=false;
+const KEY_DATES=[
+  {cat:'Silver Dollars', series:'Morgan Dollar', match:['morgan'], dates:[
+    {y:'1893',m:'S',n:'The King of Morgans',v:'$3,500+'},
+    {y:'1889',m:'CC',n:'Key Carson City',v:'$900+'},
+    {y:'1893',m:'CC',n:'Low-mintage CC',v:'$650+'},
+    {y:'1879',m:'CC',n:'Scarce CC',v:'$400+'},
+    {y:'1895',m:'O',n:'Rare O-mint',v:'$500+'},
+    {y:'1895',m:'S',n:'Scarce S-mint',v:'$1,000+'},
+    {y:'1894',m:'',n:'Low-mintage Philadelphia',v:'$1,500+'},
+    {y:'1903',m:'S',n:'Semi-key',v:'$300+'}]},
+  {cat:'Silver Dollars', series:'Peace Dollar', match:['peace'], dates:[
+    {y:'1928',m:'',n:'Lowest-mintage Peace',v:'$450+'},
+    {y:'1934',m:'S',n:'Key in higher grades',v:'$60+'},
+    {y:'1921',m:'',n:'High-relief first year',v:'$150+'},
+    {y:'1927',m:'D',n:'Semi-key',v:'$40+'},
+    {y:'1964',m:'D',n:'Never released — illegal to own',v:'—'}]},
+  {cat:'Halves', series:'Walking Liberty Half', match:['walking'], dates:[
+    {y:'1916',m:'',n:'First year',v:'$60+'},
+    {y:'1916',m:'S',n:'Obverse mint mark',v:'$120+'},
+    {y:'1916',m:'D',n:'Obverse mint mark',v:'$90+'},
+    {y:'1921',m:'',n:'Key date',v:'$150+'},
+    {y:'1921',m:'D',n:'Lowest mintage',v:'$350+'},
+    {y:'1921',m:'S',n:'Key date',v:'$60+'},
+    {y:'1938',m:'D',n:'Semi-key',v:'$120+'}]},
+  {cat:'Halves', series:'Franklin Half', match:['franklin'], dates:[
+    {y:'1949',m:'S',n:'Semi-key',v:'$45+'},
+    {y:'1953',m:'',n:'Low-mintage Philadelphia',v:'$30+'},
+    {y:'1955',m:'',n:'"Bugs Bunny" low mintage',v:'$25+'}]},
+  {cat:'Halves', series:'Barber Half', match:['barber half'], dates:[
+    {y:'1892',m:'O',n:'Micro-O variety',v:'$$$'},
+    {y:'1913',m:'',n:'Key — low mintage',v:'$60+'},
+    {y:'1914',m:'',n:'Key — low mintage',v:'$90+'},
+    {y:'1915',m:'',n:'Key — low mintage',v:'$70+'},
+    {y:'1904',m:'S',n:'Semi-key',v:'$40+'}]},
+  {cat:'Quarters', series:'Standing Liberty Quarter', match:['standing liberty','standing'], dates:[
+    {y:'1916',m:'',n:'Key — very low mintage',v:'$4,000+'},
+    {y:'1918',m:'S',n:'1918/7-S overdate',v:'$1,500+'},
+    {y:'1921',m:'',n:'Key date',v:'$300+'},
+    {y:'1923',m:'S',n:'Key date',v:'$300+'},
+    {y:'1927',m:'S',n:'Key date',v:'$150+'}]},
+  {cat:'Quarters', series:'Washington Quarter', match:['washington'], dates:[
+    {y:'1932',m:'D',n:'Key first-year',v:'$150+'},
+    {y:'1932',m:'S',n:'Key first-year',v:'$130+'},
+    {y:'1936',m:'D',n:'Semi-key',v:'$8+'}]},
+  {cat:'Quarters', series:'Barber Quarter', match:['barber quarter'], dates:[
+    {y:'1896',m:'S',n:'Key date',v:'$700+'},
+    {y:'1901',m:'S',n:'King of Barber quarters',v:'$4,000+'},
+    {y:'1913',m:'S',n:'Key date',v:'$1,500+'}]},
+  {cat:'Dimes', series:'Mercury Dime', match:['mercury'], dates:[
+    {y:'1916',m:'D',n:'The key — low mintage',v:'$900+'},
+    {y:'1921',m:'',n:'Key date',v:'$60+'},
+    {y:'1921',m:'D',n:'Key date',v:'$75+'},
+    {y:'1926',m:'S',n:'Semi-key',v:'$18+'},
+    {y:'1942',m:'',n:'1942/1 overdate',v:'$500+'},
+    {y:'1942',m:'D',n:'1942/1-D overdate',v:'$500+'}]},
+  {cat:'Dimes', series:'Barber Dime', match:['barber dime'], dates:[
+    {y:'1894',m:'S',n:'Legendary — ~24 known',v:'$$$$'},
+    {y:'1895',m:'O',n:'Key date',v:'$350+'},
+    {y:'1901',m:'S',n:'Key date',v:'$60+'},
+    {y:'1903',m:'S',n:'Semi-key',v:'$60+'},
+    {y:'1913',m:'S',n:'Semi-key',v:'$30+'}]},
+  {cat:'Nickels', series:'Buffalo Nickel', match:['buffalo'], dates:[
+    {y:'1913',m:'S',n:'Type 2 key',v:'$300+'},
+    {y:'1918',m:'D',n:'1918/7-D overdate',v:'$1,000+'},
+    {y:'1921',m:'S',n:'Key date',v:'$90+'},
+    {y:'1926',m:'S',n:'Key — lowest mintage',v:'$150+'},
+    {y:'1937',m:'D',n:'3-legged variety',v:'$500+'}]},
+  {cat:'Nickels', series:'War Nickel (35% silver)', match:['war nickel','jefferson'], dates:[
+    {y:'1942',m:'P',n:'Large-P = 35% silver — worth melt+',v:'silver'},
+    {y:'1943',m:'',n:'35% silver war nickel',v:'silver'},
+    {y:'1944',m:'',n:'35% silver war nickel',v:'silver'},
+    {y:'1945',m:'',n:'35% silver war nickel',v:'silver'}]},
+  {cat:'Nickels', series:'Liberty V Nickel', match:['liberty nickel','v nickel'], dates:[
+    {y:'1885',m:'',n:'Key date',v:'$400+'},
+    {y:'1886',m:'',n:'Key date',v:'$250+'},
+    {y:'1912',m:'S',n:'Key — first S nickel',v:'$150+'},
+    {y:'1913',m:'',n:'Legendary — 5 known',v:'$$$$'}]},
+  {cat:'Cents', series:'Lincoln Cent', match:['lincoln'], dates:[
+    {y:'1909',m:'S',n:'1909-S VDB — the key',v:'$700+'},
+    {y:'1909',m:'S',n:'1909-S (no VDB)',v:'$100+'},
+    {y:'1914',m:'D',n:'Key date',v:'$200+'},
+    {y:'1922',m:'',n:'1922 "Plain" (no D)',v:'$500+'},
+    {y:'1931',m:'S',n:'Semi-key',v:'$100+'},
+    {y:'1943',m:'',n:'1943 copper (error)',v:'$$$$'},
+    {y:'1955',m:'',n:'1955 Doubled-Die Obverse',v:'$1,000+'},
+    {y:'1972',m:'',n:'1972 Doubled-Die Obverse',v:'$300+'}]},
+  {cat:'Cents', series:'Indian Head Cent', match:['indian head'], dates:[
+    {y:'1877',m:'',n:'The key',v:'$700+'},
+    {y:'1909',m:'S',n:'Key date',v:'$400+'},
+    {y:'1888',m:'',n:'1888/7 overdate',v:'$$$'},
+    {y:'1872',m:'',n:'Semi-key',v:'$70+'}]},
+  {cat:'US Gold (pre-1933)', series:'$20 Double Eagle', match:['double eagle','$20','saint','liberty double'], dates:[
+    {y:'1907',m:'',n:'High Relief MCMVII',v:'$$$$'},
+    {y:'1927',m:'D',n:'Extreme rarity',v:'$$$$'},
+    {y:'1920',m:'S',n:'Key date',v:'$$$$'},
+    {y:'1933',m:'',n:'Illegal to own (one sold $18.9M)',v:'—'}]},
+  {cat:'US Gold (pre-1933)', series:'$10 Eagle', match:['$10 eagle','ten dollar','indian eagle','liberty eagle'], dates:[
+    {y:'1907',m:'',n:'Rolled Edge / Wire Rim',v:'$$$$'},
+    {y:'1920',m:'S',n:'Key date',v:'$$$$'},
+    {y:'1930',m:'S',n:'Key date',v:'$$$$'},
+    {y:'1933',m:'',n:'Extreme rarity',v:'$$$$'}]},
+  {cat:'US Gold (pre-1933)', series:'$2.50 Quarter Eagle', match:['quarter eagle','$2.50'], dates:[
+    {y:'1911',m:'D',n:'Key Indian quarter eagle',v:'$$$$'},
+    {y:'1875',m:'',n:'Low mintage',v:'$$$$'}]},
+  {cat:'World', series:'Canada Silver Dollar', match:['canada','canadian'], dates:[
+    {y:'1948',m:'',n:'Key — low mintage',v:'$$$'},
+    {y:'1911',m:'',n:'1911 pattern (rare)',v:'$$$$'}]},
+  {cat:'World', series:'Canada 50 Cents', match:['canada 50','canadian half'], dates:[
+    {y:'1921',m:'',n:'"King of Canadian coins"',v:'$$$$'}]},
+  {cat:'World', series:'Great Britain Penny', match:['britain penny','british penny','uk penny'], dates:[
+    {y:'1933',m:'',n:'1933 penny — extreme rarity',v:'$$$$'}]},
+  {cat:'World / Bullion', series:'Australia Lunar Silver', match:['lunar','australia','perth'], dates:[
+    {y:'*',m:'',n:'Low-mintage first-year Lunar issues carry premiums',v:'bullion+'}]}
+];
+
+function kdMint(x){x=(x||'').toString().toLowerCase().trim();
+  if(!x||x==='—'||x==='-'||x==='p'||x.includes('none')||x.includes('phil'))return 'P';
+  const t=x.match(/cc|[dsow]/); return t?t[0].toUpperCase():x.toUpperCase();}
+
+function kdIsOwned(kd,dt){
+  if(!kdOwned||dt.y==='*')return false;
+  return kdOwned.some(c=> dt.y===String(c.year).trim()
+    && kdMint(dt.m)===kdMint(c.mint)
+    && kd.match.some(m=>String(c.coin).toLowerCase().includes(m)));
+}
+
+function renderKeyDates(){
+  const q=(document.getElementById('kdSearch')?.value||'').toLowerCase().trim();
+  const mb=document.getElementById('kdMissingBtn'); if(mb)mb.classList.toggle('active',kdShowMissingOnly);
+  let total=0,owned=0,html='';
+  KEY_DATES.forEach(kd=>{
+    let rows='';
+    kd.dates.forEach(dt=>{
+      const own=kdIsOwned(kd,dt);
+      const label=(dt.y==='*'?'Any':dt.y)+(dt.m?'-'+dt.m:'');
+      if(q&&!(kd.series+' '+label+' '+dt.n).toLowerCase().includes(q))return;
+      if(kdShowMissingOnly&&kdOwned&&(own||dt.y==='*'))return;
+      if(dt.y!=='*'){total++; if(own)owned++;}
+      const badge=dt.y==='*'?'<span style="color:var(--text3);font-size:9px">REF</span>'
+        :own?'<span style="color:var(--green);font-weight:700">✓ OWNED</span>'
+        :kdOwned?'<span style="color:var(--amber);font-weight:700">◻ MISSING</span>'
+        :'<span style="color:var(--text3)">—</span>';
+      rows+=`<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:0"><div style="font-weight:700;font-size:13px">${label}</div><div style="font-size:10px;color:var(--text2)">${dt.n}</div></div>
+        <div style="text-align:right;white-space:nowrap"><div style="font-size:11px;color:var(--gold)">${dt.v}</div><div style="font-size:10px">${badge}</div></div>
+      </div>`;
+    });
+    if(rows)html+=`<div class="card"><div class="card-title">${kd.series} <span style="color:var(--text3);font-weight:400;font-size:9px">· ${kd.cat}</span></div>${rows}</div>`;
+  });
+  const list=document.getElementById('kdList'); if(list)list.innerHTML=html||'<div class="empty-state">No matches.</div>';
+  const msg=document.getElementById('kdMsg');
+  if(msg){msg.style.color='';
+    if(kdOwned)msg.innerHTML=`<span style="color:var(--green)">${owned}</span> owned · <span style="color:var(--amber)">${total-owned}</span> to find${kdShowMissingOnly?' — showing missing only':''}`;
+    else msg.textContent='Reference list — tap CHECK MY COLLECTION to compare against your coins.';}
+}
+
+async function checkKeyDateCollection(){
+  const repo=localStorage.getItem('dps_gh_repo')||'', token=localStorage.getItem('dps_gh_token')||'';
+  const msg=document.getElementById('kdMsg');
+  if(!repo||!token){alert('Set up the Private Records Repo in Settings first (repo + token).');return;}
+  if(msg){msg.style.color='var(--text3)';msg.textContent='Reading your collection…';}
+  try{
+    const cat=await ghGetFile(repo,'catalog.md');
+    kdOwned=[];
+    if(cat&&cat.text){
+      cat.text.split('\n').forEach(line=>{
+        const cells=line.split('|').map(s=>s.trim());
+        if(cells.length>6 && /^\d{4}-\d{4}$/.test(cells[1])) kdOwned.push({coin:cells[3],year:cells[4],mint:cells[5]});
+      });
+    }
+    renderKeyDates();
+  }catch(e){ if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+e.message;} }
 }
 
 // Settings PIN change
