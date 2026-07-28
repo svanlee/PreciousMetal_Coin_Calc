@@ -332,8 +332,8 @@ button{cursor:pointer;}
       <div id="stApiMsg" style="font-size:11px;margin-top:6px;min-height:16px"></div>
     </div>
     <div class="card">
-      <div class="card-title">LIVE PRICES (GOLDAPI.COM)</div>
-      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Real-time metals spot. Free key at goldapi.io. Without a key the app uses a limited fallback (may be stale).</div>
+      <div class="card-title">LIVE PRICES — OPTIONAL BACKUP KEY</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Live prices already work with NO key (via gold-api.com). This optional GoldAPI.com key is only used as a backup if the free source is down.</div>
       <div class="field-label">GOLDAPI KEY</div>
       <input type="password" class="field-input" id="stGoldKey" placeholder="goldapi-..." style="margin-bottom:8px">
       <div style="display:flex;gap:8px">
@@ -954,10 +954,19 @@ function showTab(name){
 // SPOT PRICES
 // ══════════════════════════════════════════
 async function fetchSpotPrices(){
+  const metals=[['silver','XAG'],['gold','XAU'],['platinum','XPT'],['palladium','XPD']];
+  // 1) Free, NO-KEY source: gold-api.com
+  try{
+    const results=await Promise.all(metals.map(([,sym])=>
+      fetch('https://api.gold-api.com/price/'+sym).then(res=>res.ok?res.json():null).catch(()=>null)));
+    let got=false;
+    results.forEach((d,i)=>{ if(d&&parseFloat(d.price)>0){ metalPrices[metals[i][0]]=parseFloat(d.price); got=true; } });
+    if(got){ if(metalPrices.silver>0)spot=metalPrices.silver; updateSpotDisplay(); return; }
+  }catch(e){}
+  // 2) Optional GoldAPI.com key (only if free source failed and a key is set)
   const gaKey=(localStorage.getItem('dps_goldapi_key')||'').trim();
   if(gaKey){
     try{
-      const metals=[['silver','XAG'],['gold','XAU'],['platinum','XPT'],['palladium','XPD']];
       const results=await Promise.all(metals.map(([,sym])=>
         fetch('https://www.goldapi.io/api/'+sym+'/USD',{headers:{'x-access-token':gaKey,'Content-Type':'application/json'}})
           .then(res=>res.ok?res.json():null).catch(()=>null)));
@@ -966,6 +975,7 @@ async function fetchSpotPrices(){
       if(got){ if(metalPrices.silver>0)spot=metalPrices.silver; updateSpotDisplay(); return; }
     }catch(e){}
   }
+  // 3) Last-resort fallback
   try{
     const r=await fetch('https://api.metals.live/v1/spot');
     const data=await r.json();
