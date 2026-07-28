@@ -346,7 +346,7 @@ button{cursor:pointer;}
     <div class="card">
       <div class="card-title">PRIVATE RECORDS REPO (GITHUB)</div>
       <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Saves coin scans (photos + record) to a private GitHub repo. Use a fine-grained token scoped to ONLY this repo, Contents: Read &amp; write.</div>
-      <div class="field"><div class="field-label">REPO (owner/name)</div><input class="field-input" id="stGhRepo" placeholder="svanlee/PreciousMetal_Coin_Records" style="margin-bottom:8px"></div>
+      <div class="field"><div class="field-label">REPO (paste repo URL, or owner/name)</div><input class="field-input" id="stGhRepo" placeholder="github.com/yourname/PreciousMetal_Coin_Records" style="margin-bottom:8px"></div>
       <div class="field-label">TOKEN</div>
       <input type="password" class="field-input" id="stGhToken" placeholder="github_pat_..." style="margin-bottom:8px">
       <div style="display:flex;gap:8px">
@@ -1970,7 +1970,7 @@ async function testGoldApi(){
 const GH_BRANCH='main';
 
 function saveGithubSettings(){
-  const repo=document.getElementById('stGhRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+  const repo=document.getElementById('stGhRepo').value.trim().replace(/^(https?:\/\/)?(www\.)?github\.com\//i,'').replace(/\.git$/,'').replace(/\/$/,'');
   const token=document.getElementById('stGhToken').value.trim();
   const m=document.getElementById('stGhMsg');
   if(repo&&!/^[\w.-]+\/[\w.-]+$/.test(repo)){m.style.color='var(--red)';m.textContent='Repo must be owner/name.';return;}
@@ -1987,7 +1987,7 @@ async function ghFetch(path,opts){
 }
 
 async function testGithubRepo(){
-  const repo=document.getElementById('stGhRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+  const repo=document.getElementById('stGhRepo').value.trim().replace(/^(https?:\/\/)?(www\.)?github\.com\//i,'').replace(/\.git$/,'').replace(/\/$/,'');
   const token=document.getElementById('stGhToken').value.trim();
   const m=document.getElementById('stGhMsg');
   if(!repo||!token){m.style.color='var(--red)';m.textContent='Enter repo and token first.';return;}
