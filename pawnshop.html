@@ -415,6 +415,7 @@ button{cursor:pointer;}
     <button class="tab" onclick="showTab('evaluate')">🔬 EVALUATE</button>
     <button class="tab" onclick="showTab('market')">📈 MARKET</button>
     <button class="tab" onclick="showTab('key')">🔑 KEY DATES</button>
+    <button class="tab" onclick="showTab('collection')">🪙 COLLECTION</button>
     <button class="tab admin-only" onclick="showTab('employees')" style="display:none">👥 EMPLOYEES</button>
     <button class="tab admin-only" onclick="showTab('compliance')" style="display:none">🚔 COMPLIANCE</button>
   </div>
@@ -595,6 +596,18 @@ button{cursor:pointer;}
     </div>
     <div id="kdList"></div>
     <div style="font-size:9px;color:var(--text3);text-align:center;margin:10px 0 20px">Values are rough retail estimates — always verify against a current price guide. Not every variety is listed.</div>
+  </div>
+
+  <!-- ── COLLECTION ── -->
+  <div class="panel" id="panel-collection">
+    <div class="card">
+      <div class="card-title">🪙 MY COLLECTION</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">Every coin saved to your private records repo, with running totals.</div>
+      <button class="btn btn-green btn-full" onclick="loadCollection(true)">🔄 REFRESH</button>
+      <div id="collSummary" style="margin-top:8px;font-size:11px"></div>
+      <input class="field-input" id="collSearch" placeholder="Search coin, year, mint, grade…" oninput="renderCollection()" style="margin-top:8px">
+    </div>
+    <div id="collList"></div>
   </div>
 
   <!-- ── EMPLOYEES (admin) ── -->
@@ -969,6 +982,7 @@ function showTab(name){
   if(name==='compliance')renderCompliance();
   if(name==='market')fetchSpotPrices();
   if(name==='key'){ if(kdOwned===null && localStorage.getItem('dps_gh_token')) checkKeyDateCollection(); else renderKeyDates(); }
+  if(name==='collection'){ if(collCoins===null && localStorage.getItem('dps_gh_token')) loadCollection(true); else renderCollection(); }
 }
 
 // ══════════════════════════════════════════
@@ -2345,6 +2359,72 @@ async function checkKeyDateCollection(){
     }
     renderKeyDates();
   }catch(e){ if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+e.message;} }
+}
+
+// ══════════════════════════════════════════
+// MY COLLECTION (reads the records repo catalog)
+// ══════════════════════════════════════════
+let collCoins=null;
+function collMoney(s){return parseFloat(String(s||'').replace(/[^0-9.]/g,''))||0;}
+
+async function loadCollection(force){
+  const repo=localStorage.getItem('dps_gh_repo')||'', token=localStorage.getItem('dps_gh_token')||'';
+  const sum=document.getElementById('collSummary');
+  if(!repo||!token){if(sum)sum.innerHTML='<span style="color:var(--amber)">Set up the Private Records Repo in Settings first.</span>';return;}
+  if(!force&&collCoins){renderCollection();return;}
+  if(sum){sum.style.color='var(--text3)';sum.textContent='Loading your collection…';}
+  try{
+    const cat=await ghGetFile(repo,'catalog.md');
+    collCoins=[];
+    if(cat&&cat.text){
+      cat.text.split('\n').forEach(line=>{
+        const c=line.split('|').map(s=>s.trim());
+        if(c.length>10 && /^\d{4}$/.test(c[4]) && c[3] && c[3]!=='Coin'){
+          const nm=(c[8]||'').split(/[–-]/);
+          const pathM=/\]\(([^)]+)\)/.exec(c[11]||'');
+          collCoins.push({id:c[1],coin:c[3],year:c[4],mint:c[5],grade:c[6],melt:collMoney(c[7]),
+            numisLow:collMoney(nm[0]),numisHigh:collMoney(nm[1]||nm[0]),
+            paid:(c[9]&&c[9]!=='—')?collMoney(c[9]):null,rec:c[10],path:pathM?pathM[1]:null});
+        }
+      });
+    }
+    renderCollection();
+  }catch(e){if(sum){sum.style.color='var(--red)';sum.textContent='✗ '+e.message;}}
+}
+
+function renderCollection(){
+  const q=(document.getElementById('collSearch')?.value||'').toLowerCase().trim();
+  const repo=localStorage.getItem('dps_gh_repo')||'';
+  const sum=document.getElementById('collSummary'), list=document.getElementById('collList');
+  if(!collCoins){if(sum)sum.textContent='Tap REFRESH to load your collection.';return;}
+  let tMelt=0,tLo=0,tHi=0,tPaid=0;
+  collCoins.forEach(c=>{tMelt+=c.melt;tLo+=c.numisLow;tHi+=c.numisHigh;if(c.paid!=null)tPaid+=c.paid;});
+  const chip=(l,v,col)=>`<span style="display:inline-block;font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:3px 8px;margin:2px 3px 0 0">${l} <b style="color:${col||'inherit'}">${v}</b></span>`;
+  if(sum){sum.style.color='';sum.innerHTML=
+    chip('Coins',collCoins.length)
+    +chip('Melt',fc(tMelt),'var(--green)')
+    +chip('Numismatic','$'+tLo.toFixed(0)+'–$'+tHi.toFixed(0),'var(--gold)')
+    +chip('Paid',fc(tPaid))
+    +chip('Melt − Paid',fc(tMelt-tPaid),(tMelt-tPaid)>=0?'var(--green)':'var(--red)');}
+  const rows=collCoins.filter(c=>!q||(c.coin+' '+c.year+' '+c.mint+' '+c.grade).toLowerCase().includes(q));
+  let html='';
+  rows.forEach(c=>{
+    const mm=mintSlug(c.mint);
+    const link=c.path?('https://github.com/'+repo+'/blob/'+GH_BRANCH+'/'+c.path):'';
+    const recBuy=(c.rec||'').toUpperCase().includes('BUY');
+    html+=`<div class="card" style="padding:10px">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <div style="min-width:0">
+          <div style="font-weight:700;font-size:14px">${c.year}${mm?'-'+mm:''} ${c.coin}</div>
+          <div style="font-size:10px;color:var(--text2)">Grade ${c.grade||'—'} · Melt ${fc(c.melt)} · Numis $${c.numisLow.toFixed(0)}–$${c.numisHigh.toFixed(0)}${c.paid!=null?' · Paid '+fc(c.paid):''}</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap">
+          <div style="font-size:11px;font-weight:700;color:${recBuy?'var(--green)':'var(--amber)'}">${c.rec||''}</div>
+          ${link?`<a href="${link}" target="_blank" style="font-size:10px;color:var(--gold)">view ↗</a>`:''}
+        </div>
+      </div></div>`;
+  });
+  if(list)list.innerHTML=html||'<div class="empty-state">No coins yet — scan one and hit SAVE TO RECORDS REPO.</div>';
 }
 
 // Settings PIN change
