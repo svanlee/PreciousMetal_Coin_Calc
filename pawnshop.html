@@ -332,6 +332,19 @@ button{cursor:pointer;}
       <div id="stApiMsg" style="font-size:11px;margin-top:6px;min-height:16px"></div>
     </div>
     <div class="card">
+      <div class="card-title">PRIVATE RECORDS REPO (GITHUB)</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Saves coin scans (photos + record) to a private GitHub repo. Use a fine-grained token scoped to ONLY this repo, Contents: Read &amp; write.</div>
+      <div class="field"><div class="field-label">REPO (owner/name)</div><input class="field-input" id="stGhRepo" placeholder="svanlee/PreciousMetal_Coin_Records" style="margin-bottom:8px"></div>
+      <div class="field-label">TOKEN</div>
+      <input type="password" class="field-input" id="stGhToken" placeholder="github_pat_..." style="margin-bottom:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('stGhToken').type=document.getElementById('stGhToken').type==='password'?'text':'password'" style="flex:1">👁 SHOW</button>
+        <button class="btn btn-ghost" onclick="testGithubRepo()" style="flex:1">🔌 TEST</button>
+        <button class="btn btn-green" onclick="saveGithubSettings()" style="flex:1">SAVE</button>
+      </div>
+      <div id="stGhMsg" style="font-size:11px;margin-top:6px;min-height:16px"></div>
+    </div>
+    <div class="card">
       <div class="card-title">ADMIN PIN</div>
       <div style="font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px" id="stPinStep">CURRENT ADMIN PIN</div>
       <div class="pin-dots" style="margin-bottom:14px">
@@ -1550,6 +1563,8 @@ Respond ONLY with valid JSON no markdown:
       </div>
       ${specWeight?`<div class="card"><div class="card-title">⚖ WEIGHT CHECK</div><div style="font-size:11px;color:var(--text2);margin-bottom:10px">Expected: <span class="text-gold">${specWeight}g</span></div><div class="grid2" style="gap:8px"><div><div class="field-label">ACTUAL (g)</div><input class="field-input" type="number" step="0.01" id="evalWeight" placeholder="${specWeight}" oninput="evalWeightCheck('${r.coinType}')"></div><div style="display:flex;flex-direction:column;justify-content:flex-end"><div style="background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:8px;font-size:14px;font-weight:700;color:var(--gold);text-align:center">${specWeight}g</div></div></div><div id="evalWeightVerdict" style="margin-top:8px"></div></div>`:''}
       <button class="btn btn-primary" onclick="useEvalForTicket(${JSON.stringify(r).replace(/"/g,'&quot;')})">→ CREATE BUY TICKET</button>
+      <button class="btn btn-green btn-full" style="margin-top:8px" id="saveRepoBtn" onclick="saveCoinToRepo(${JSON.stringify(r).replace(/"/g,'&quot;')})">💾 SAVE TO RECORDS REPO</button>
+      <div id="saveRepoMsg" style="font-size:11px;margin-top:6px;min-height:16px;text-align:center"></div>
       <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="clearEvalResults()">EVALUATE ANOTHER</button>`;
     document.getElementById('evalResults').style.display='block';
   }catch(e){
@@ -1603,7 +1618,7 @@ function clearEvalResults(){
 // ══════════════════════════════════════════
 // EMPLOYEE KPIs
 // ══════════════════════════════════════════
-let kpiPeriod='week';
+// (kpiPeriod declared once in the globals block above)
 function setKpiPeriod(p,btn){
   kpiPeriod=p;
   document.querySelectorAll('#panel-employees .btn-sm').forEach(b=>b.classList.remove('active'));
@@ -1792,7 +1807,7 @@ function printReport(){ window.print(); }
 // ══════════════════════════════════════════
 // CUSTOMER MODE
 // ══════════════════════════════════════════
-let customerModeOn=false; let cmRows=[];
+let customerModeOn=false; cmRows=[];
 function toggleCustomerMode(){
   customerModeOn=!customerModeOn;
   document.getElementById('customerModeOverlay').style.display=customerModeOn?'block':'none';
@@ -1857,6 +1872,9 @@ function openSettings(){
   document.getElementById('stHoldDays').value=db.store.holdDays||10;
   document.getElementById('stApiKey').value=localStorage.getItem('dps_api_key')||'';
   document.getElementById('stApiKey').type='password';
+  document.getElementById('stGhRepo').value=localStorage.getItem('dps_gh_repo')||'';
+  document.getElementById('stGhToken').value=localStorage.getItem('dps_gh_token')||'';
+  document.getElementById('stGhToken').type='password';
   stPinEntry=''; stPinStage='current'; stPinNew='';
   for(let i=0;i<4;i++)document.getElementById('stpd'+i).classList.remove('filled');
   document.getElementById('stPinStep').textContent='CURRENT ADMIN PIN';
@@ -1885,6 +1903,163 @@ function saveApiKeySetting(){
   if(k&&!k.startsWith('sk-ant-')){m.style.color='var(--red)';m.textContent='Invalid key format.';return;}
   if(k)localStorage.setItem('dps_api_key',k);
   m.style.color='var(--green)'; m.textContent='✓ Saved'; setTimeout(()=>m.textContent='',3000);
+}
+
+// ══════════════════════════════════════════
+// PRIVATE RECORDS REPO (GitHub) — auto-save coin scans
+// ══════════════════════════════════════════
+const GH_BRANCH='main';
+
+function saveGithubSettings(){
+  const repo=document.getElementById('stGhRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+  const token=document.getElementById('stGhToken').value.trim();
+  const m=document.getElementById('stGhMsg');
+  if(repo&&!/^[\w.-]+\/[\w.-]+$/.test(repo)){m.style.color='var(--red)';m.textContent='Repo must be owner/name.';return;}
+  localStorage.setItem('dps_gh_repo',repo);
+  if(token)localStorage.setItem('dps_gh_token',token);
+  m.style.color='var(--green)'; m.textContent='✓ Saved'; setTimeout(()=>m.textContent='',3000);
+}
+
+async function ghFetch(path,opts){
+  const token=localStorage.getItem('dps_gh_token')||'';
+  const headers=Object.assign({'Accept':'application/vnd.github+json','Authorization':'Bearer '+token},opts&&opts.headers||{});
+  const resp=await fetch('https://api.github.com'+path,Object.assign({},opts,{headers}));
+  return resp;
+}
+
+async function testGithubRepo(){
+  const repo=document.getElementById('stGhRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+  const token=document.getElementById('stGhToken').value.trim();
+  const m=document.getElementById('stGhMsg');
+  if(!repo||!token){m.style.color='var(--red)';m.textContent='Enter repo and token first.';return;}
+  m.style.color='var(--text3)';m.textContent='Testing…';
+  try{
+    const resp=await fetch('https://api.github.com/repos/'+repo,{headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+token}});
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error((resp.status)+' '+(e.message||resp.statusText));}
+    const j=await resp.json();
+    if(!j.permissions||!j.permissions.push){m.style.color='var(--amber)';m.textContent='⚠ Read OK but token lacks write. Grant Contents: Read & write.';return;}
+    m.style.color='var(--green)';m.textContent='✓ Connected — '+(j.private?'private':'PUBLIC ⚠')+', write OK';
+  }catch(e){m.style.color='var(--red)';m.textContent='✗ '+e.message;}
+}
+
+// Get a file's decoded text + sha, or null if missing
+async function ghGetFile(repo,path){
+  const resp=await ghFetch('/repos/'+repo+'/contents/'+path+'?ref='+GH_BRANCH);
+  if(resp.status===404)return null;
+  if(!resp.ok)throw new Error('read '+path+': '+resp.status);
+  const j=await resp.json();
+  return {text:decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),sha:j.sha};
+}
+
+// Next record id like 2026-0002 by scanning coins/
+async function nextRepoRecordId(repo){
+  let max=0;
+  const resp=await ghFetch('/repos/'+repo+'/contents/coins?ref='+GH_BRANCH);
+  if(resp.ok){
+    const list=await resp.json();
+    (list||[]).forEach(f=>{const mm=/^\d{4}-(\d{4})\.md$/.exec(f.name||'');if(mm)max=Math.max(max,parseInt(mm[1]));});
+  }
+  return new Date().getFullYear()+'-'+String(max+1).padStart(4,'0');
+}
+
+// Commit multiple files atomically via the Git Data API.
+// files: [{path, content, encoding:'utf-8'|'base64'}]
+async function ghCommitFiles(repo,files,message){
+  const refResp=await ghFetch('/repos/'+repo+'/git/ref/heads/'+GH_BRANCH);
+  if(!refResp.ok)throw new Error('ref: '+refResp.status);
+  const baseSha=(await refResp.json()).object.sha;
+  const commitResp=await ghFetch('/repos/'+repo+'/git/commits/'+baseSha);
+  const baseTree=(await commitResp.json()).tree.sha;
+  const tree=[];
+  for(const f of files){
+    const blobResp=await ghFetch('/repos/'+repo+'/git/blobs',{method:'POST',body:JSON.stringify({content:f.content,encoding:f.encoding||'utf-8'})});
+    if(!blobResp.ok)throw new Error('blob '+f.path+': '+blobResp.status);
+    tree.push({path:f.path,mode:'100644',type:'blob',sha:(await blobResp.json()).sha});
+  }
+  const treeResp=await ghFetch('/repos/'+repo+'/git/trees',{method:'POST',body:JSON.stringify({base_tree:baseTree,tree})});
+  if(!treeResp.ok)throw new Error('tree: '+treeResp.status);
+  const newTree=(await treeResp.json()).sha;
+  const newCommitResp=await ghFetch('/repos/'+repo+'/git/commits',{method:'POST',body:JSON.stringify({message,tree:newTree,parents:[baseSha]})});
+  if(!newCommitResp.ok)throw new Error('commit: '+newCommitResp.status);
+  const newCommit=(await newCommitResp.json()).sha;
+  const patchResp=await ghFetch('/repos/'+repo+'/git/refs/heads/'+GH_BRANCH,{method:'PATCH',body:JSON.stringify({sha:newCommit})});
+  if(!patchResp.ok)throw new Error('ref update: '+patchResp.status);
+  return newCommit;
+}
+
+function mdCell(v){return String(v==null?'':v).replace(/\|/g,'/').replace(/\n/g,' ');}
+
+function buildCoinRecordMd(id,r,weight,price){
+  const spec=COIN_SPECS[r.coinType];
+  let wVerdict='—';
+  if(weight&&spec){
+    const diff=Math.abs(weight-spec.weight);
+    if(diff<=spec.tol*0.5)wVerdict='PASS — '+weight+'g vs '+spec.weight+'g (Δ'+(weight-spec.weight).toFixed(2)+'g)';
+    else if(diff<=spec.tol)wVerdict='MARGINAL — '+weight+'g vs '+spec.weight+'g';
+    else wVerdict=(weight<spec.weight?'UNDERWEIGHT':'OVERWEIGHT')+' — '+weight+'g vs '+spec.weight+'g — SUSPECT';
+  }
+  const rows=[
+    ['Record ID',id],
+    ['Date scanned',today()],
+    ['Coin type / series',(r.coinType||'')+(r.series?' ('+r.series+')':'')],
+    ['Date / year',r.year||'?'],
+    ['Mint mark',r.mintMark||'none'],
+    ['Grade (ANA)',(r.grade||'')+(r.confidence?' ('+r.confidence+' confidence)':'')],
+    ['Silver content',(r.silverOz!=null?r.silverOz+' ozt':'—')],
+    ['Weight (measured)',weight?weight+' g':'—'],
+    ['Weight verdict',wVerdict],
+    ['Melt value',r.meltValue!=null?fc(r.meltValue):'—'],
+    ['Numismatic value (low–high)','$'+(r.numisLow||0)+' – $'+(r.numisHigh||0)],
+    ['Patina / toning',((r.toningColors||[]).join(', ')||'—')+(r.toningNotes?' — '+r.toningNotes:'')],
+    ['Authenticity',(r.cleaningDetected?'Cleaning detected. ':'')+(r.artificialToning?'Artificial toning suspected. ':'')+(r.concerns||'')+' Verdict: '+(r.verdict||'unknown')],
+    ['Recommendation',(r.buyRec||'').toUpperCase()],
+    ['Reasoning',r.buyNotes||r.numisNotes||''],
+    ['Shop offer',r.shopOffer!=null?fc(r.shopOffer):'—'],
+    ['Price paid',price?fc(price):'—'],
+    ['Silver spot @ scan','$'+(spot||0).toFixed(2)+'/oz']
+  ];
+  let md='# Coin Record — '+id+'\n\n| Field | Value |\n|-------|-------|\n';
+  rows.forEach(([k,v])=>{md+='| **'+k+'** | '+mdCell(v)+' |\n';});
+  md+='\n## Images\n- Obverse: `../images/'+id+'-obverse.jpg`'+(evalPhotos.obv?'':' *(not captured)*')+'\n- Reverse: `../images/'+id+'-reverse.jpg`'+(evalPhotos.rev?'':' *(not captured)*')+'\n';
+  return md;
+}
+
+function catalogRow(id,r,price){
+  return '| '+id+' | '+today()+' | '+mdCell(r.coinType||'')+' | '+mdCell(r.year||'')+' | '+mdCell(r.mintMark||'—')+' | '+mdCell(r.grade||'')+' | '+(r.meltValue!=null?fc(r.meltValue):'—')+' | $'+(r.numisLow||0)+'–$'+(r.numisHigh||0)+' | '+(price?fc(price):'—')+' | '+mdCell((r.buyRec||'').toUpperCase())+' | ['+id+'](coins/'+id+'.md) |';
+}
+
+function insertCatalogRow(catalogText,row){
+  const lines=catalogText.split('\n');
+  const sep=lines.findIndex(l=>/^\s*\|\s*-+/.test(l));
+  if(sep>=0){lines.splice(sep+1,0,row);return lines.join('\n');}
+  // no table yet — build a fresh one
+  return '# 🪙 Coin Catalog — Master Index\n\nRunning index of every cataloged coin. Newest first.\n\n| ID | Date | Coin | Year | Mint | Grade | Melt | Numismatic | Paid | Rec | Record |\n|----|------|------|------|------|-------|------|-----------|------|-----|--------|\n'+row+'\n';
+}
+
+async function saveCoinToRepo(r){
+  const repo=localStorage.getItem('dps_gh_repo')||'';
+  const token=localStorage.getItem('dps_gh_token')||'';
+  const msg=document.getElementById('saveRepoMsg');
+  const btn=document.getElementById('saveRepoBtn');
+  if(!repo||!token){alert('Set up the Private Records Repo in Settings first (repo + token).');return;}
+  if(msg){msg.style.color='var(--text3)';msg.textContent='Saving…';}
+  if(btn)btn.disabled=true;
+  try{
+    const weight=parseFloat(document.getElementById('evalWeight')?.value)||0;
+    const priceStr=prompt('Price paid for this coin? (leave blank to skip)');
+    const price=priceStr?parseFloat(priceStr)||0:0;
+    const id=await nextRepoRecordId(repo);
+    const files=[{path:'coins/'+id+'.md',content:buildCoinRecordMd(id,r,weight,price),encoding:'utf-8'}];
+    if(evalPhotos.obv)files.push({path:'images/'+id+'-obverse.jpg',content:evalPhotos.obv,encoding:'base64'});
+    if(evalPhotos.rev)files.push({path:'images/'+id+'-reverse.jpg',content:evalPhotos.rev,encoding:'base64'});
+    const cat=await ghGetFile(repo,'catalog.md');
+    files.push({path:'catalog.md',content:insertCatalogRow(cat?cat.text:'',catalogRow(id,r,price)),encoding:'utf-8'});
+    await ghCommitFiles(repo,files,'Add coin '+id+': '+(r.year||'')+' '+(r.coinType||'coin'));
+    if(msg){msg.style.color='var(--green)';msg.textContent='✓ Saved as '+id+' → '+repo;}
+  }catch(e){
+    if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+e.message;}
+    else alert('Save failed: '+e.message);
+  }finally{ if(btn)btn.disabled=false; }
 }
 
 // Settings PIN change
